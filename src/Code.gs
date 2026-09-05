@@ -104,7 +104,7 @@ function gerarPDFPrescricao(dados) {
       </head>
       <body>
         <div class="header">
-          <div class="title">SYNGENTA CROP PROTECTION</div>
+          <div class="title">SYNGENTA BIOLOGICALS</div>
           <div class="subtitle">Prescrição Técnica de Produtos Biológicos</div>
         </div>
 
