@@ -136,8 +136,15 @@
   }
 
   function enviarWhatsApp() {
+    if (!produtoSelecionado) return;
+
     const areaInput = document.getElementById('inputArea').value.replace(',', '.');
     const area = parseFloat(areaInput);
+
+    if (isNaN(area) || area <= 0) {
+      alert("Por favor, informe uma área de aplicação válida.");
+      return;
+    }
 
     const prodTotal = formatarNumero(produtoSelecionado.doseHa * area);
     const caldaTotal = formatarNumero(produtoSelecionado.volCaldaHa * area);
@@ -162,52 +169,10 @@
 💧 *Volume de Calda/ha:* ${formatarNumero(produtoSelecionado.volCaldaHa)} ${produtoSelecionado.unidadeCalda}
 💦 *CALDA TOTAL NECESSÁRIA:* *${caldaTotal} ${unidadeCaldaLimpa}*
 
-${produtoSelecionado.observacoes ? `📝 *Obs. Técnica:* _${produtoSelecionado.observacoes}_` : ''}
----------------------------------------
-_Prescrição gerada via Prescritor Campo Syngenta_`;
+${produtoSelecionado.observacoes ? `📝 *Obs. Técnica:* _${produtoSelecionado.observacoes}_\n` : ''}---------------------------------------
+_Prescrição elaborada por: Thais dos Santos Gomes_
+_Syngenta Biologicals_`;
 
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
-  }
-
-  function gerarPDF() {
-    const areaInput = document.getElementById('inputArea').value.replace(',', '.');
-    const area = parseFloat(areaInput);
-    const btnPDF = document.getElementById('btnPDF');
-    
-    btnPDF.disabled = true;
-    btnPDF.innerHTML = `<span>⏳</span> Gerando PDF...`;
-    alternarLoading(true);
-
-    const unidadeProdLimpa = produtoSelecionado.unidadeDose.replace('/ha', '').trim();
-    const unidadeCaldaLimpa = produtoSelecionado.unidadeCalda.replace('/ha', '').trim();
-
-    const dadosPayload = {
-      cultura: produtoSelecionado.cultura,
-      alvo: produtoSelecionado.alvo,
-      produto: produtoSelecionado.produto,
-      area: formatarNumero(area),
-      doseHa: formatarNumero(produtoSelecionado.doseHa),
-      unidadeDose: produtoSelecionado.unidadeDose,
-      volCaldaHa: formatarNumero(produtoSelecionado.volCaldaHa),
-      unidadeCalda: produtoSelecionado.unidadeCalda,
-      prodTotal: `${formatarNumero(produtoSelecionado.doseHa * area)} ${unidadeProdLimpa}`,
-      caldaTotal: `${formatarNumero(produtoSelecionado.volCaldaHa * area)} ${unidadeCaldaLimpa}`,
-      observacoes: produtoSelecionado.observacoes
-    };
-
-    google.script.run
-      .withSuccessHandler((urlPdf) => {
-        btnPDF.disabled = false;
-        btnPDF.innerHTML = `<span>📄</span> Gerar PDF Oficial`;
-        alternarLoading(false);
-        window.open(urlPdf, '_blank');
-      })
-      .withFailureHandler((erro) => {
-        btnPDF.disabled = false;
-        btnPDF.innerHTML = `<span>📄</span> Gerar PDF Oficial`;
-        alternarLoading(false);
-        alert("Erro ao gerar PDF: " + erro.message);
-      })
-      .gerarPDFPrescricao(dadosPayload);
   }
 </script>

@@ -58,7 +58,7 @@ function getDadosPrescricao() {
     const data = sheet.getDataRange().getDisplayValues();
     if (!data || data.length <= 1) return [];
 
-    data.shift(); // Remove a linha do cabeçalho
+    data.shift(); // Remove a linha de cabeçalho
 
     return data
       .filter(row => row[1] && String(row[1]).trim() !== '')
@@ -74,79 +74,6 @@ function getDadosPrescricao() {
         observacoes: String(row[8] || '').trim()
       }));
   } catch (erro) {
-    throw new Error(erro.message);
-  }
-}
-
-/**
- * Gera um PDF oficial da prescrição técnica e armazena no Google Drive.
- * @param {Object} dados Dados formatados da prescrição.
- * @returns {string} URL pública do PDF gerado.
- */
-function gerarPDFPrescricao(dados) {
-  try {
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          body { font-family: Arial, sans-serif; color: #333; margin: 30px; }
-          .header { background-color: #008751; color: white; padding: 20px; border-radius: 6px; }
-          .title { font-size: 20px; font-weight: bold; margin: 0; }
-          .subtitle { font-size: 13px; margin-top: 4px; opacity: 0.9; }
-          .section { margin-top: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 12px; }
-          .field { margin: 6px 0; font-size: 13px; }
-          .label { font-weight: bold; color: #475569; }
-          .box { background-color: #f0fdf4; border-left: 4px solid #008751; padding: 12px; margin-top: 15px; }
-          .footer { margin-top: 30px; font-size: 10px; text-align: center; color: #94a3b8; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="title">SYNGENTA BIOLOGICALS</div>
-          <div class="subtitle">Prescrição Técnica de Produtos Biológicos</div>
-        </div>
-
-        <div class="section">
-          <div class="field"><span class="label">Cultura:</span> ${dados.cultura}</div>
-          <div class="field"><span class="label">Alvo / Praga / Doença:</span> ${dados.alvo}</div>
-          <div class="field"><span class="label">Produto Biológico:</span> <strong>${dados.produto}</strong></div>
-          <div class="field"><span class="label">Área Aplicada:</span> ${dados.area} ha</div>
-        </div>
-
-        <div class="section">
-          <div class="field"><span class="label">Dose por Hectare:</span> ${dados.doseHa} ${dados.unidadeDose}</div>
-          <div class="field"><span class="label">Volume de Calda/ha:</span> ${dados.volCaldaHa} ${dados.unidadeCalda}</div>
-        </div>
-
-        <div class="box">
-          <div class="field"><span class="label">PRODUTO TOTAL:</span> <strong>${dados.prodTotal}</strong></div>
-          <div class="field"><span class="label">CALDA TOTAL:</span> <strong>${dados.caldaTotal}</strong></div>
-        </div>
-
-        ${dados.observacoes ? `
-          <div class="section">
-            <div class="label">Observações Técnicas:</div>
-            <p style="font-size: 12px; color: #334155;">${dados.observacoes}</p>
-          </div>
-        ` : ''}
-
-        <div class="footer">
-          Documento gerado via Prescritor Biológico Syngenta em ${new Date().toLocaleDateString('pt-BR')}.
-        </div>
-      </body>
-      </html>
-    `;
-
-    const blob = HtmlService.createHtmlOutput(htmlContent).getAs('application/pdf');
-    blob.setName(`Prescricao_${dados.produto.replace(/\s+/g, '_')}.pdf`);
-
-    const arquivo = DriveApp.createFile(blob);
-    arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-    return arquivo.getUrl();
-  } catch (erro) {
-    throw new Error("Erro na geração do PDF: " + erro.message);
+    throw new Error("Erro no backend: " + erro.message);
   }
 }
