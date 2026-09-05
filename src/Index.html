@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Prescritor Biológicos | Syngenta</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <?!= include('CSS'); ?>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased font-sans min-h-screen">
+
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-xl flex flex-col">
+    
+    <!-- Header Corporativo -->
+    <header class="bg-syngenta text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl">🌱</span>
+        <div>
+          <h1 class="font-bold text-base leading-tight">Prescritor Biológico</h1>
+          <p class="text-xs text-emerald-100">Syngenta Crop Protection</p>
+        </div>
+      </div>
+      <div id="loadingStatus" class="hidden">
+        <div class="loader"></div>
+      </div>
+    </header>
+
+    <!-- Conteúdo da Aplicação -->
+    <main class="p-4 flex-1 space-y-4">
+      
+      <!-- Card 1: Seleção do Produto -->
+      <section class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 shadow-xs">
+        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">1. Parâmetros de Campo</h2>
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Cultura</label>
+          <select id="selectCultura" onchange="aoMudarCultura()" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+            <option value="">Carregando dados...</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Alvo / Praga / Doença</label>
+          <select id="selectAlvo" onchange="aoMudarAlvo()" disabled class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none disabled:bg-slate-200">
+            <option value="">Selecione primeiro a Cultura</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Produto Recomendado</label>
+          <select id="selectProduto" onchange="aoMudarProduto()" disabled class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none disabled:bg-slate-200">
+            <option value="">Selecione o Alvo</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Área de Aplicação (Hectares)</label>
+          <input type="number" id="inputArea" placeholder="Ex: 100" oninput="calcular()" min="0.1" step="any" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        </div>
+      </section>
+
+      <!-- Card 2: Resumo e Ações -->
+      <section id="cardResultado" class="hidden bg-emerald-50 p-4 rounded-xl border border-emerald-200 space-y-3 fade-in">
+        <h2 class="text-xs font-bold text-emerald-800 uppercase tracking-wider">2. Resumo da Prescrição</h2>
+        
+        <div class="bg-white p-3 rounded-lg border border-emerald-100 space-y-1 text-sm">
+          <p class="text-xs font-bold text-emerald-700 uppercase">📦 Produto Biológico</p>
+          <p class="flex justify-between"><span class="text-slate-600">Dose/ha:</span> <span id="lblDoseHa" class="font-bold text-slate-900">-</span></p>
+          <p class="flex justify-between border-t border-slate-100 pt-1"><span class="text-slate-600">Produto Total:</span> <span id="lblVolumeProdutoTotal" class="text-base font-extrabold text-syngenta">-</span></p>
+        </div>
+
+        <div class="bg-white p-3 rounded-lg border border-emerald-100 space-y-1 text-sm">
+          <p class="text-xs font-bold text-sky-700 uppercase">💧 Calda de Aplicação</p>
+          <p class="flex justify-between"><span class="text-slate-600">Taxa/ha:</span> <span id="lblVolCaldaHa" class="font-bold text-slate-900">-</span></p>
+          <p class="flex justify-between border-t border-slate-100 pt-1"><span class="text-slate-600">Calda Total:</span> <span id="lblVolCaldaTotal" class="text-base font-extrabold text-sky-700">-</span></p>
+        </div>
+
+        <p id="lblObservacao" class="text-xs text-slate-600 italic border-t border-emerald-200/60 pt-2"></p>
+
+        <div class="space-y-2 pt-1">
+          <button onclick="enviarWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-md transition active:scale-95">
+            <span>📱</span> Enviar via WhatsApp
+          </button>
+          
+          <button onclick="gerarPDF()" id="btnPDF" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 text-sm transition active:scale-95">
+            <span>📄</span> Gerar PDF Oficial
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="p-3 text-center text-xs text-slate-400 border-t border-slate-200">
+      Syngenta Biologics &copy; Prescritor de Campo
+    </footer>
+  </div>
+
+  <?!= include('JavaScript'); ?>
+</body>
+</html>

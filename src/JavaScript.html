@@ -1,0 +1,213 @@
+<script>
+  let baseProdutos = [];
+  let produtoSelecionado = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarDadosDoServidor();
+  });
+
+  function alternarLoading(exibir) {
+    const el = document.getElementById('loadingStatus');
+    if (exibir) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  }
+
+  function formatarNumero(valor, maxDecimais = 2) {
+    if (valor === null || valor === undefined || isNaN(valor)) return '0';
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: maxDecimais
+    }).format(valor);
+  }
+
+  function carregarDadosDoServidor() {
+    alternarLoading(true);
+    google.script.run
+      .withSuccessHandler(aoCarregarSucesso)
+      .withFailureHandler(aoCarregarErro)
+      .getDadosPrescricao();
+  }
+
+  function aoCarregarSucesso(dados) {
+    alternarLoading(false);
+    baseProdutos = dados;
+    povoarDropdownCulturas();
+  }
+
+  function aoCarregarErro(erro) {
+    alternarLoading(false);
+    alert("⚠️ Erro ao carregar dados da planilha:\n\n" + erro.message);
+  }
+
+  function povoarDropdownCulturas() {
+    const selectCultura = document.getElementById('selectCultura');
+    const culturasUnicas = [...new Set(baseProdutos.map(item => item.cultura))].filter(Boolean);
+
+    if (culturasUnicas.length === 0) {
+      selectCultura.innerHTML = `<option value="">Nenhum dado cadastrado</option>`;
+      return;
+    }
+
+    selectCultura.innerHTML = `<option value="">-- Selecione a Cultura --</option>` +
+      culturasUnicas.map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+
+  function aoMudarCultura() {
+    const cultura = document.getElementById('selectCultura').value;
+    const selectAlvo = document.getElementById('selectAlvo');
+    const selectProduto = document.getElementById('selectProduto');
+
+    selectAlvo.innerHTML = '<option value="">-- Selecione o Alvo --</option>';
+    selectProduto.innerHTML = '<option value="">Selecione o Alvo</option>';
+    selectAlvo.disabled = !cultura;
+    selectProduto.disabled = true;
+    esconderResultado();
+
+    if (!cultura) return;
+
+    const alvosFiltrados = [...new Set(
+      baseProdutos
+        .filter(item => item.cultura === cultura)
+        .map(item => item.alvo)
+    )];
+
+    selectAlvo.innerHTML += alvosFiltrados.map(a => `<option value="${a}">${a}</option>`).join('');
+  }
+
+  function aoMudarAlvo() {
+    const cultura = document.getElementById('selectCultura').value;
+    const alvo = document.getElementById('selectAlvo').value;
+    const selectProduto = document.getElementById('selectProduto');
+
+    selectProduto.innerHTML = '<option value="">-- Selecione o Produto --</option>';
+    selectProduto.disabled = !alvo;
+    esconderResultado();
+
+    if (!alvo) return;
+
+    const produtosFiltrados = baseProdutos.filter(item => item.cultura === cultura && item.alvo === alvo);
+    selectProduto.innerHTML += produtosFiltrados.map(p => `<option value="${p.id}">${p.produto}</option>`).join('');
+  }
+
+  function aoMudarProduto() {
+    const idProduto = document.getElementById('selectProduto').value;
+    
+    if (!idProduto) {
+      produtoSelecionado = null;
+      esconderResultado();
+      return;
+    }
+
+    produtoSelecionado = baseProdutos.find(p => String(p.id) === String(idProduto));
+    calcular();
+  }
+
+  function calcular() {
+    const areaInput = document.getElementById('inputArea').value.replace(',', '.');
+    const area = parseFloat(areaInput);
+    const cardResultado = document.getElementById('cardResultado');
+
+    if (!produtoSelecionado || isNaN(area) || area <= 0) {
+      esconderResultado();
+      return;
+    }
+
+    const prodTotal = produtoSelecionado.doseHa * area;
+    const caldaTotal = produtoSelecionado.volCaldaHa * area;
+
+    const unidadeProdLimpa = produtoSelecionado.unidadeDose.replace('/ha', '').trim();
+    const unidadeCaldaLimpa = produtoSelecionado.unidadeCalda.replace('/ha', '').trim();
+
+    document.getElementById('lblDoseHa').innerText = `${formatarNumero(produtoSelecionado.doseHa)} ${produtoSelecionado.unidadeDose}`;
+    document.getElementById('lblVolumeProdutoTotal').innerText = `${formatarNumero(prodTotal)} ${unidadeProdLimpa}`;
+    
+    document.getElementById('lblVolCaldaHa').innerText = `${formatarNumero(produtoSelecionado.volCaldaHa)} ${produtoSelecionado.unidadeCalda}`;
+    document.getElementById('lblVolCaldaTotal').innerText = `${formatarNumero(caldaTotal)} ${unidadeCaldaLimpa}`;
+
+    document.getElementById('lblObservacao').innerText = produtoSelecionado.observacoes 
+      ? `💡 Obs. Técnica: ${produtoSelecionado.observacoes}` 
+      : '';
+
+    cardResultado.classList.remove('hidden');
+  }
+
+  function esconderResultado() {
+    document.getElementById('cardResultado').classList.add('hidden');
+  }
+
+  function enviarWhatsApp() {
+    const areaInput = document.getElementById('inputArea').value.replace(',', '.');
+    const area = parseFloat(areaInput);
+
+    const prodTotal = formatarNumero(produtoSelecionado.doseHa * area);
+    const caldaTotal = formatarNumero(produtoSelecionado.volCaldaHa * area);
+
+    const unidadeProdLimpa = produtoSelecionado.unidadeDose.replace('/ha', '').trim();
+    const unidadeCaldaLimpa = produtoSelecionado.unidadeCalda.replace('/ha', '').trim();
+
+    const mensagem = 
+`*🌱 PRESCRIÇÃO TÉCNICA BIOLÓGICOS SYNGENTA*
+---------------------------------------
+🚜 *Cultura:* ${produtoSelecionado.cultura}
+🐛 *Alvo:* ${produtoSelecionado.alvo}
+📦 *Produto:* *${produtoSelecionado.produto}*
+
+📐 *Área Recomendada:* ${formatarNumero(area)} ha
+
+--- *DOSAGEM DE PRODUTO* ---
+📊 *Dose/ha:* ${formatarNumero(produtoSelecionado.doseHa)} ${produtoSelecionado.unidadeDose}
+🧮 *PRODUTO TOTAL:* *${prodTotal} ${unidadeProdLimpa}*
+
+--- *TECNOLOGIA DE APLICAÇÃO* ---
+💧 *Volume de Calda/ha:* ${formatarNumero(produtoSelecionado.volCaldaHa)} ${produtoSelecionado.unidadeCalda}
+💦 *CALDA TOTAL NECESSÁRIA:* *${caldaTotal} ${unidadeCaldaLimpa}*
+
+${produtoSelecionado.observacoes ? `📝 *Obs. Técnica:* _${produtoSelecionado.observacoes}_` : ''}
+---------------------------------------
+_Prescrição gerada via Prescritor Campo Syngenta_`;
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
+  }
+
+  function gerarPDF() {
+    const areaInput = document.getElementById('inputArea').value.replace(',', '.');
+    const area = parseFloat(areaInput);
+    const btnPDF = document.getElementById('btnPDF');
+    
+    btnPDF.disabled = true;
+    btnPDF.innerHTML = `<span>⏳</span> Gerando PDF...`;
+    alternarLoading(true);
+
+    const unidadeProdLimpa = produtoSelecionado.unidadeDose.replace('/ha', '').trim();
+    const unidadeCaldaLimpa = produtoSelecionado.unidadeCalda.replace('/ha', '').trim();
+
+    const dadosPayload = {
+      cultura: produtoSelecionado.cultura,
+      alvo: produtoSelecionado.alvo,
+      produto: produtoSelecionado.produto,
+      area: formatarNumero(area),
+      doseHa: formatarNumero(produtoSelecionado.doseHa),
+      unidadeDose: produtoSelecionado.unidadeDose,
+      volCaldaHa: formatarNumero(produtoSelecionado.volCaldaHa),
+      unidadeCalda: produtoSelecionado.unidadeCalda,
+      prodTotal: `${formatarNumero(produtoSelecionado.doseHa * area)} ${unidadeProdLimpa}`,
+      caldaTotal: `${formatarNumero(produtoSelecionado.volCaldaHa * area)} ${unidadeCaldaLimpa}`,
+      observacoes: produtoSelecionado.observacoes
+    };
+
+    google.script.run
+      .withSuccessHandler((urlPdf) => {
+        btnPDF.disabled = false;
+        btnPDF.innerHTML = `<span>📄</span> Gerar PDF Oficial`;
+        alternarLoading(false);
+        window.open(urlPdf, '_blank');
+      })
+      .withFailureHandler((erro) => {
+        btnPDF.disabled = false;
+        btnPDF.innerHTML = `<span>📄</span> Gerar PDF Oficial`;
+        alternarLoading(false);
+        alert("Erro ao gerar PDF: " + erro.message);
+      })
+      .gerarPDFPrescricao(dadosPayload);
+  }
+</script>
