@@ -1,11 +1,17 @@
 <style>
+  :root {
+    --syngenta-green: #008752;
+    --syngenta-dark: #005A36;
+  }
+
   .bg-syngenta {
-    background-color: #008542;
+    background-color: var(--syngenta-green);
   }
+
   .text-syngenta {
-    color: #008542;
+    color: var(--syngenta-green);
   }
-  
+
   .loader {
     border: 3px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
@@ -21,7 +27,7 @@
   }
 
   .fade-in {
-    animation: fadeIn 0.3s ease-in-out forwards;
+    animation: fadeIn 0.25s ease-in-out forwards;
   }
 
   @keyframes fadeIn {

@@ -2,46 +2,76 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Prescritor Biológicos | Syngenta</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            syngenta: {
+              DEFAULT: '#008050',
+              dark: '#00613d',
+              light: '#00a366',
+              soft: '#e6f4ed'
+            }
+          }
+        }
+      }
+    }
+  </script>
   <?!= include('CSS'); ?>
 </head>
-<body class="bg-slate-100 text-slate-800 antialiased font-sans min-h-screen">
+<body class="bg-slate-100 text-slate-800 antialiased font-sans min-h-screen select-none">
 
   <script>
     window.AUTORIZACAO_PREVIA_SERVIDOR = <?= autorizacaoPrevia ?>;
   </script>
 
-  <div class="max-w-md mx-auto bg-white min-h-screen shadow-xl flex flex-col relative">
+  <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl flex flex-col relative">
     
-    <!-- Header Corporativo Syngenta -->
-    <header class="bg-syngenta text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-10">
-      <div class="flex items-center gap-2.5">
-        <span class="text-2xl">🌱</span>
+    <!-- Header -->
+    <header class="bg-syngenta text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-30">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/10 p-2 rounded-xl border border-white/20 flex items-center justify-center">
+          <span class="text-2xl">🌱</span>
+        </div>
         <div>
-          <h1 class="font-bold text-base leading-tight">Prescritor Biológico</h1>
-          <p class="text-xs text-emerald-100">Syngenta Biologicals</p>
+          <h1 class="font-extrabold text-base leading-tight">Prescritor Biológico</h1>
+          <p class="text-xs text-emerald-100 font-medium">Syngenta Biologicals</p>
         </div>
       </div>
-      <div id="loadingStatus" class="hidden">
-        <div class="loader"></div>
+      
+      <div class="flex items-center gap-2">
+        <div id="loadingStatus" class="hidden">
+          <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        </div>
+        <button onclick="bloquearManual()" title="Bloquear Aplicativo" class="p-2 bg-syngenta-dark hover:bg-emerald-900 rounded-xl transition active:scale-95 text-sm border border-emerald-600/50">
+          🔒
+        </button>
       </div>
     </header>
 
-    <!-- Modal de Autenticação / PIN (Senha 7410) -->
-    <div id="screenLock" class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-xs text-center space-y-4">
-        <div class="text-4xl">🔒</div>
+    <!-- Modal Lock Screen (PIN) -->
+    <div id="screenLock" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-xs text-center space-y-5 border border-slate-100">
+        <div class="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
+          <span class="text-3xl">🔒</span>
+        </div>
         <div>
           <h2 class="text-lg font-bold text-slate-800">Acesso Restrito</h2>
-          <p class="text-xs text-slate-500 mt-1">Informe a chave de acesso para utilizar a calculadora.</p>
+          <p class="text-xs text-slate-500 mt-1">Informe o PIN de acesso para continuar.</p>
         </div>
-        <div>
-          <input type="password" id="inputPin" placeholder="Digite o PIN" class="w-full text-center tracking-widest text-lg p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
-          <p id="msgErroPin" class="text-xs text-red-500 mt-1 hidden">PIN incorreto. Tente novamente.</p>
+        
+        <div class="space-y-2">
+          <input type="password" id="inputPin" inputmode="numeric" placeholder="••••" maxlength="8" class="w-full text-center tracking-widest text-2xl font-bold p-3 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-syngenta outline-none bg-slate-50">
+          <p id="msgErroPin" class="text-xs font-semibold text-red-500 hidden"></p>
         </div>
-        <button onclick="autenticarPorPin()" class="w-full bg-syngenta text-white font-bold py-3 rounded-xl shadow-md hover:bg-emerald-700 transition active:scale-95">
-          Desbloquear
+
+        <button onclick="autenticarPorPin()" class="w-full bg-syngenta hover:bg-syngenta-dark text-white font-bold py-3.5 rounded-2xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
+          <span>Desbloquear</span>
+          <span>➔</span>
         </button>
       </div>
     </div>
@@ -49,65 +79,147 @@
     <!-- Conteúdo Principal -->
     <main class="p-4 flex-1 space-y-4">
       
-      <!-- Card 1: Seleção de Parâmetros -->
-      <section class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 shadow-xs">
-        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">1. Parâmetros de Campo</h2>
+      <!-- PAINEL 1: SELEÇÃO TÉCNICA -->
+      <section class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3.5 shadow-xs">
+        <h2 class="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-2">
+          📋 1. Seleção Técnica
+        </h2>
         
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Cultura</label>
-          <select id="selectCultura" onchange="aoMudarCultura()" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
-            <option value="">Aguardando autenticação...</option>
+          <label for="selectCultura" class="block text-xs font-bold text-slate-700 mb-1">Cultura</label>
+          <select id="selectCultura" onchange="aoMudarCultura()" class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-syngenta outline-none">
+            <option value="">Carregando culturas...</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Alvo / Praga / Doença</label>
-          <select id="selectAlvo" onchange="aoMudarAlvo()" disabled class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none disabled:bg-slate-200">
+          <label for="selectAlvo" class="block text-xs font-bold text-slate-700 mb-1">Alvo / Praga / Doença</label>
+          <select id="selectAlvo" onchange="aoMudarAlvo()" disabled class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-syngenta outline-none disabled:bg-slate-100 disabled:text-slate-400">
             <option value="">Selecione primeiro a Cultura</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Produto Recomendado</label>
-          <select id="selectProduto" onchange="aoMudarProduto()" disabled class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none disabled:bg-slate-200">
+          <label for="selectProduto" class="block text-xs font-bold text-slate-700 mb-1">Produto Recomendado</label>
+          <select id="selectProduto" onchange="aoMudarProduto()" disabled class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-syngenta outline-none disabled:bg-slate-100 disabled:text-slate-400">
             <option value="">Selecione o Alvo</option>
           </select>
         </div>
 
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">Área de Aplicação (Hectares)</label>
-          <input type="number" id="inputArea" placeholder="Ex: 100" oninput="calcular()" min="0.1" step="any" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+        <!-- Parâmetros Operacionais Gerais -->
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <div>
+            <label for="inputArea" class="block text-xs font-bold text-slate-700 mb-1">Área Total (ha)</label>
+            <input type="number" id="inputArea" placeholder="Ex: 10" oninput="calcular()" min="0.1" step="any" class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-syngenta outline-none">
+          </div>
+          <div>
+            <label id="lblInputTanque" for="inputTanque" class="block text-xs font-bold text-slate-700 mb-1">Tanque / Bomba (L)</label>
+            <input type="number" id="inputTanque" placeholder="Ex: 20" oninput="calcular()" min="1" step="any" class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-syngenta outline-none">
+          </div>
         </div>
+
+        <!-- CAMPOS DINÂMICOS: VIA SOLO / ESGUICHO -->
+        <div id="boxCamposSolo" class="hidden p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-3">
+          <p class="text-xs font-bold text-amber-900 flex items-center gap-1.5 border-b border-amber-200 pb-1.5">
+            🌱 Parâmetros Espaciais (Aplicação Via Solo / Esguicho)
+          </p>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label for="inputEspacamentoLinhas" class="block text-[11px] font-bold text-amber-900 mb-1">Espaç. Linhas (m)</label>
+              <input type="number" id="inputEspacamentoLinhas" placeholder="Ex: 2.5" oninput="calcular()" min="0.1" step="any" class="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+              <label for="inputEspacamentoPlantas" class="block text-[11px] font-bold text-amber-900 mb-1">Espaç. Plantas (m)</label>
+              <input type="number" id="inputEspacamentoPlantas" placeholder="Ex: 0.5" oninput="calcular()" min="0.1" step="any" class="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+          </div>
+
+          <div>
+            <label for="inputVolEsguicho" class="block text-[11px] font-bold text-amber-900 mb-1">Volume Esguicho (mL/planta)</label>
+            <input type="number" id="inputVolEsguicho" placeholder="Ex: 50" oninput="calcular()" min="1" step="any" class="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+
       </section>
 
-      <!-- Card 2: Resumo do Cálculo e Envio WhatsApp -->
-      <section id="cardResultado" class="hidden bg-emerald-50 p-4 rounded-xl border border-emerald-200 space-y-3 fade-in">
-        <h2 class="text-xs font-bold text-emerald-800 uppercase tracking-wider">2. Resumo da Prescrição</h2>
+      <!-- PAINEL 2: RESUMO DA PRESCRIÇÃO -->
+      <section id="cardResultado" class="hidden bg-syngenta-soft p-4 rounded-2xl border border-emerald-200 space-y-3.5 transition-all">
+        <h2 class="text-xs font-extrabold text-syngenta-dark uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-200/80 pb-2">
+          📊 2. Resumo da Prescrição
+        </h2>
         
-        <div class="bg-white p-3 rounded-lg border border-emerald-100 space-y-1 text-sm">
-          <p class="text-xs font-bold text-emerald-700 uppercase">📦 Produto Biológico</p>
-          <p class="flex justify-between"><span class="text-slate-600">Dose/ha:</span> <span id="lblDoseHa" class="font-bold text-slate-900">-</span></p>
-          <p class="flex justify-between border-t border-slate-100 pt-1"><span class="text-slate-600">Produto Total:</span> <span id="lblVolumeProdutoTotal" class="text-base font-extrabold text-syngenta">-</span></p>
+        <!-- Tipo de Aplicação -->
+        <div id="boxTipoAplicacaoCard" class="bg-white p-3.5 rounded-xl border border-emerald-200/80 flex items-center justify-between shadow-xs">
+          <div class="flex items-center gap-3">
+            <span id="iconeTipoAplicacao" class="text-2xl">💦</span>
+            <div>
+              <p class="text-[10px] font-bold text-slate-400 uppercase leading-none">Tipo de Aplicação</p>
+              <p id="lblTipoAplicacaoVal" class="text-sm font-black text-syngenta-dark mt-1">-</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-extrabold px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 uppercase">Recomendado</span>
         </div>
 
-        <div class="bg-white p-3 rounded-lg border border-emerald-100 space-y-1 text-sm">
-          <p class="text-xs font-bold text-sky-700 uppercase">💧 Calda de Aplicação</p>
-          <p class="flex justify-between"><span class="text-slate-600">Taxa/ha:</span> <span id="lblVolCaldaHa" class="font-bold text-slate-900">-</span></p>
-          <p class="flex justify-between border-t border-slate-100 pt-1"><span class="text-slate-600">Calda Total:</span> <span id="lblVolCaldaTotal" class="text-base font-extrabold text-sky-700">-</span></p>
+        <!-- Métricas de População & Planta (Ativo Apenas Via Solo) -->
+        <div id="boxDosePlantaResultado" class="hidden bg-amber-100/80 p-3.5 rounded-xl border border-amber-300 space-y-1.5 text-sm">
+          <p class="text-xs font-bold text-amber-900 uppercase flex items-center gap-1 border-b border-amber-200 pb-1">🌱 População & Dose por Planta</p>
+          <div class="space-y-1 pt-0.5">
+            <p class="flex justify-between text-xs text-amber-950"><span class="text-slate-600 font-medium">População Estimada:</span> <span id="lblPopulacaoHa" class="font-bold">-</span></p>
+            <p class="flex justify-between text-xs text-amber-950"><span class="text-slate-600 font-medium">Plantas na Área Total:</span> <span id="lblTotalPlantasArea" class="font-bold">-</span></p>
+            <p class="flex justify-between border-t border-amber-300/80 pt-1.5 font-bold text-amber-900 text-sm">
+              <span>DOSE POR PLANTA:</span>
+              <span id="lblDosePorPlanta" class="text-base text-amber-950 font-extrabold">-</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Produto Biológico -->
+        <div class="bg-white p-3.5 rounded-xl border border-emerald-100 space-y-1.5 text-sm shadow-xs">
+          <p class="text-xs font-extrabold text-syngenta uppercase tracking-wide">📦 Produto Biológico</p>
+          <p class="flex justify-between text-xs"><span class="text-slate-500 font-medium">Dose/ha:</span> <span id="lblDoseHa" class="font-bold text-slate-800">-</span></p>
+          <p class="flex justify-between border-t border-slate-100 pt-1.5 items-baseline">
+            <span class="text-slate-600 font-bold text-xs">Produto Total:</span> 
+            <span id="lblVolumeProdutoTotal" class="text-base font-black text-syngenta">-</span>
+          </p>
+        </div>
+
+        <!-- Volume de Calda -->
+        <div class="bg-white p-3.5 rounded-xl border border-emerald-100 space-y-1.5 text-sm shadow-xs">
+          <p id="lblTituloVolumeCalda" class="text-xs font-extrabold text-sky-700 uppercase tracking-wide">💧 Volume de Calda</p>
+          <p class="flex justify-between text-xs"><span id="lblRotuloVolCaldaHa" class="text-slate-500 font-medium">Volume/ha:</span> <span id="lblVolCaldaHa" class="font-bold text-slate-800">-</span></p>
+          <p class="flex justify-between border-t border-slate-100 pt-1.5 items-baseline">
+            <span class="text-slate-600 font-bold text-xs">Volume Total:</span> 
+            <span id="lblVolCaldaTotal" class="text-base font-black text-sky-700">-</span>
+          </p>
+        </div>
+
+        <!-- Preparo por Tanque / Bomba -->
+        <div id="boxTanque" class="hidden bg-amber-50/90 p-3.5 rounded-xl border border-amber-200 space-y-1.5 text-sm">
+          <p id="lblTituloTanque" class="text-xs font-extrabold text-amber-900 uppercase">🚜 Preparo por Tanque / Bomba</p>
+          <p class="flex justify-between border-t border-amber-200/60 pt-1.5 items-baseline">
+            <span class="text-slate-700 font-bold text-xs">Produto / Tanque:</span> 
+            <span id="lblProdPorTanque" class="text-base font-black text-amber-900">-</span>
+          </p>
+          <p class="flex justify-between text-xs text-slate-600 border-t border-amber-200/40 pt-1">
+            <span class="font-medium">Estimativa de Recargas:</span> 
+            <span id="lblNumTanques" class="font-bold text-slate-800">-</span>
+          </p>
         </div>
 
         <p id="lblObservacao" class="text-xs text-slate-600 italic border-t border-emerald-200/60 pt-2"></p>
 
+        <!-- Ação WhatsApp -->
         <div class="pt-2 border-t border-emerald-200">
-          <button onclick="enviarWhatsApp()" class="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-95 text-base">
-            <span class="text-xl">📲</span> Enviar via WhatsApp
+          <button onclick="enviarWhatsApp()" class="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2.5 shadow-md transition active:scale-95 text-base">
+            <span class="text-xl">📲</span> Enviar Prescrição WhatsApp
           </button>
         </div>
       </section>
 
     </main>
 
-    <footer class="p-3 text-center text-xs text-slate-500 border-t border-slate-200 bg-slate-50">
+    <footer class="p-3 text-center text-[11px] font-medium text-slate-400 border-t border-slate-200 bg-slate-50">
       Syngenta Biologicals &copy; Prescritor Agrocampo
     </footer>
   </div>

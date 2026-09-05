@@ -1,189 +1,240 @@
 <script>
   let baseProdutos = [];
-  let produtoSelecionado = null;
-  let chaveAcessoSessao = '';
+  let produtoAtual = null;
 
   document.addEventListener('DOMContentLoaded', () => {
-    inicializarAutenticacao();
+    if (window.AUTORIZACAO_PREVIA_SERVIDOR) {
+      document.getElementById('screenLock').classList.add('hidden');
+      carregarDadosServidor('7410');
+    }
   });
 
-  function alternarLoading(exibir) {
-    const el = document.getElementById('loadingStatus');
-    if (exibir) el.classList.remove('hidden');
-    else el.classList.add('hidden');
-  }
-
-  function inicializarAutenticacao() {
-    // 1. Verifica parâmetro ?chave=7410 na URL
-    if (window.AUTORIZACAO_PREVIA_SERVIDOR) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const chaveUrl = urlParams.get('chave');
-      if (chaveUrl) {
-        localStorage.setItem('syngenta_app_pin', chaveUrl);
-        chaveAcessoSessao = chaveUrl;
-        desbloquearTela();
-        return;
-      }
+  function parseNum(val) {
+    if (!val) return 0;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    let str = String(val).trim().replace(/\s/g, '');
+    if (str.includes(',') && !str.includes('.')) {
+      str = str.replace(',', '.');
+    } else if (str.includes(',') && str.includes('.')) {
+      str = str.replace(/\./g, '').replace(',', '.');
     }
-
-    // 2. Verifica se o PIN já foi salvo no celular
-    const pinSalvo = localStorage.getItem('syngenta_app_pin');
-    if (pinSalvo) {
-      chaveAcessoSessao = pinSalvo;
-      desbloquearTela();
-    }
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
   }
 
   function autenticarPorPin() {
-    const pinInput = document.getElementById('inputPin').value.trim();
-    if (!pinInput) return;
+    const pin = document.getElementById('inputPin').value;
+    const msgErro = document.getElementById('msgErroPin');
+    msgErro.classList.add('hidden');
 
-    alternarLoading(true);
-    google.script.run
-      .withSuccessHandler((valido) => {
-        alternarLoading(false);
-        if (valido) {
-          localStorage.setItem('syngenta_app_pin', pinInput);
-          chaveAcessoSessao = pinInput;
-          document.getElementById('msgErroPin').classList.add('hidden');
-          desbloquearTela();
-        } else {
-          document.getElementById('msgErroPin').innerText = "PIN incorreto. Tente novamente.";
-          document.getElementById('msgErroPin').classList.remove('hidden');
-        }
-      })
-      .withFailureHandler(() => {
-        alternarLoading(false);
-        document.getElementById('msgErroPin').classList.remove('hidden');
-      })
-      .validarSenha(pinInput);
-  }
-
-  function desbloquearTela() {
-    document.getElementById('screenLock').classList.add('hidden');
-    carregarDadosDoServidor();
-  }
-
-  function formatarNumero(valor, maxDecimais = 2) {
-    if (valor === null || valor === undefined || isNaN(valor)) return '0';
-    return new Intl.NumberFormat('pt-BR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: maxDecimais
-    }).format(valor);
-  }
-
-  function carregarDadosDoServidor() {
-    alternarLoading(true);
-    google.script.run
-      .withSuccessHandler(aoCarregarSucesso)
-      .withFailureHandler(aoCarregarErro)
-      .getDadosPrescricao(chaveAcessoSessao);
-  }
-
-  function aoCarregarSucesso(dados) {
-    alternarLoading(false);
-    baseProdutos = dados;
-    povoarDropdownCulturas();
-  }
-
-  function aoCarregarErro(erro) {
-    alternarLoading(false);
-    localStorage.removeItem('syngenta_app_pin');
-    document.getElementById('screenLock').classList.remove('hidden');
-    document.getElementById('msgErroPin').innerText = "PIN inválido ou expirado.";
-    document.getElementById('msgErroPin').classList.remove('hidden');
-  }
-
-  function povoarDropdownCulturas() {
-    const selectCultura = document.getElementById('selectCultura');
-    const culturasUnicas = [...new Set(baseProdutos.map(item => item.cultura))].filter(Boolean);
-
-    if (culturasUnicas.length === 0) {
-      selectCultura.innerHTML = `<option value="">Nenhum produto cadastrado</option>`;
+    if (!pin) {
+      msgErro.innerText = 'Digite o PIN de acesso.';
+      msgErro.classList.remove('hidden');
       return;
     }
 
-    selectCultura.innerHTML = `<option value="">-- Selecione a Cultura --</option>` +
-      culturasUnicas.map(c => `<option value="${c}">${c}</option>`).join('');
+    carregarDadosServidor(pin);
+  }
+
+  function carregarDadosServidor(pin) {
+    exibirLoader(true);
+    google.script.run
+      .withSuccessHandler((dados) => {
+        exibirLoader(false);
+        baseProdutos = dados;
+        document.getElementById('screenLock').classList.add('hidden');
+        popularCulturas();
+      })
+      .withFailureHandler((err) => {
+        exibirLoader(false);
+        const msgErro = document.getElementById('msgErroPin');
+        document.getElementById('screenLock').classList.remove('hidden');
+        msgErro.innerText = err.message === 'PIN_INCORRETO' ? 'PIN incorreto. Tente novamente.' : err.message;
+        msgErro.classList.remove('hidden');
+      })
+      .getDadosPrescricao(pin);
+  }
+
+  function popularCulturas() {
+    const culturas = [...new Set(baseProdutos.map(i => i.cultura))].sort();
+    const select = document.getElementById('selectCultura');
+    select.innerHTML = '<option value="">Selecione a Cultura</option>';
+    culturas.forEach(c => select.innerHTML += `<option value="${c}">${c}</option>`);
   }
 
   function aoMudarCultura() {
     const cultura = document.getElementById('selectCultura').value;
     const selectAlvo = document.getElementById('selectAlvo');
-    const selectProduto = document.getElementById('selectProduto');
+    const selectProd = document.getElementById('selectProduto');
+    
+    selectAlvo.innerHTML = '<option value="">Selecione o Alvo</option>';
+    selectProd.innerHTML = '<option value="">Selecione o Alvo Primeiro</option>';
+    selectProd.disabled = true;
 
-    selectAlvo.innerHTML = '<option value="">-- Selecione o Alvo --</option>';
-    selectProduto.innerHTML = '<option value="">Selecione o Alvo</option>';
-    selectAlvo.disabled = !cultura;
-    selectProduto.disabled = true;
-    esconderResultado();
+    if (!cultura) {
+      selectAlvo.disabled = true;
+      esconderResultado();
+      return;
+    }
 
-    if (!cultura) return;
-
-    const alvosFiltrados = [...new Set(
-      baseProdutos
-        .filter(item => item.cultura === cultura)
-        .map(item => item.alvo)
-    )];
-
-    selectAlvo.innerHTML += alvosFiltrados.map(a => `<option value="${a}">${a}</option>`).join('');
+    const alvos = [...new Set(baseProdutos.filter(i => i.cultura === cultura).map(i => i.alvo))].sort();
+    alvos.forEach(a => selectAlvo.innerHTML += `<option value="${a}">${a}</option>`);
+    selectAlvo.disabled = false;
   }
 
   function aoMudarAlvo() {
     const cultura = document.getElementById('selectCultura').value;
     const alvo = document.getElementById('selectAlvo').value;
-    const selectProduto = document.getElementById('selectProduto');
+    const selectProd = document.getElementById('selectProduto');
 
-    selectProduto.innerHTML = '<option value="">-- Selecione o Produto --</option>';
-    selectProduto.disabled = !alvo;
-    esconderResultado();
+    selectProd.innerHTML = '<option value="">Selecione o Produto</option>';
 
-    if (!alvo) return;
+    if (!alvo) {
+      selectProd.disabled = true;
+      esconderResultado();
+      return;
+    }
 
-    const produtosFiltrados = baseProdutos.filter(item => item.cultura === cultura && item.alvo === alvo);
-    selectProduto.innerHTML += produtosFiltrados.map(p => `<option value="${p.id}">${p.produto}</option>`).join('');
+    const prods = baseProdutos.filter(i => i.cultura === cultura && i.alvo === alvo);
+    prods.forEach(p => selectProd.innerHTML += `<option value="${p.id}">${p.produto}</option>`);
+    selectProd.disabled = false;
   }
 
   function aoMudarProduto() {
-    const idProduto = document.getElementById('selectProduto').value;
-    
-    if (!idProduto) {
-      produtoSelecionado = null;
+    const id = document.getElementById('selectProduto').value;
+    produtoAtual = baseProdutos.find(p => String(p.id) === String(id));
+    if (produtoAtual) {
+      calcular();
+    } else {
       esconderResultado();
-      return;
+    }
+  }
+
+  /**
+   * Converte valores < 1 L para mL/ha ou g/ha
+   */
+  function formatarValorEUnidade(valor, unidadeOriginal) {
+    if (!valor || isNaN(valor)) return { valorFormatted: '0', unidade: unidadeOriginal || '' };
+    let u = (unidadeOriginal || '').trim();
+    let v = valor;
+
+    // Se menor que 1 L/ha ou 1 L, converte para mL
+    if ((u.toLowerCase() === 'l/ha' || u.toLowerCase() === 'l') && v < 1 && v > 0) {
+      v = v * 1000;
+      u = u.toLowerCase() === 'l/ha' ? 'mL/ha' : 'mL';
+    }
+    // Se menor que 1 kg/ha ou 1 kg, converte para g
+    else if ((u.toLowerCase() === 'kg/ha' || u.toLowerCase() === 'kg') && v < 1 && v > 0) {
+      v = v * 1000;
+      u = u.toLowerCase() === 'kg/ha' ? 'g/ha' : 'g';
     }
 
-    produtoSelecionado = baseProdutos.find(p => String(p.id) === String(idProduto));
-    calcular();
+    return {
+      valorFormatted: v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+      unidade: u,
+      valorNumericoLimpo: v
+    };
   }
 
   function calcular() {
-    const areaInput = document.getElementById('inputArea').value.replace(',', '.');
-    const area = parseFloat(areaInput);
-    const cardResultado = document.getElementById('cardResultado');
+    if (!produtoAtual) return;
 
-    if (!produtoSelecionado || isNaN(area) || area <= 0) {
-      esconderResultado();
-      return;
+    const areaHa = parseNum(document.getElementById('inputArea').value);
+    const capTanque = parseNum(document.getElementById('inputTanque').value);
+
+    let doseHaBase = produtoAtual.doseHa;
+    let volCaldaHaBase = produtoAtual.volCaldaHa;
+    let unidadeDoseBase = produtoAtual.unidadeDose || 'L/ha';
+    let unidadeCaldaBase = produtoAtual.unidadeCalda || 'L/ha';
+
+    // Identifica se a aplicação é via Solo / Esguicho / Drench
+    const ehSolo = /solo|esguicho|drench|sulco/i.test(produtoAtual.tipoAplicacao);
+
+    if (ehSolo) {
+      document.getElementById('boxCamposSolo').classList.remove('hidden');
+      document.getElementById('boxDosePlantaResultado').classList.remove('hidden');
+
+      const espLinhas = parseNum(document.getElementById('inputEspacamentoLinhas').value);
+      const espPlantas = parseNum(document.getElementById('inputEspacamentoPlantas').value);
+      const volEsguichoMl = parseNum(document.getElementById('inputVolEsguicho').value);
+
+      if (espLinhas > 0 && espPlantas > 0) {
+        const populacaoHa = Math.round(10000 / (espLinhas * espPlantas));
+        const totalPlantasArea = Math.round(populacaoHa * (areaHa || 1));
+
+        document.getElementById('lblPopulacaoHa').innerText = populacaoHa.toLocaleString('pt-BR') + ' plantas/ha';
+        document.getElementById('lblTotalPlantasArea').innerText = totalPlantasArea.toLocaleString('pt-BR') + ' plantas';
+
+        if (volEsguichoMl > 0) {
+          volCaldaHaBase = (populacaoHa * volEsguichoMl) / 1000;
+        }
+
+        let doseHaEmMlOuG = (unidadeDoseBase.toLowerCase().includes('l') || unidadeDoseBase.toLowerCase().includes('kg')) 
+          ? doseHaBase * 1000 
+          : doseHaBase;
+
+        let dosePorPlanta = doseHaEmMlOuG / populacaoHa;
+        let unidPlanta = (unidadeDoseBase.toLowerCase().includes('kg') || unidadeDoseBase.toLowerCase().includes('g')) ? 'g/planta' : 'mL/planta';
+
+        document.getElementById('lblDosePorPlanta').innerText = dosePorPlanta.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + ' ' + unidPlanta;
+      } else {
+        document.getElementById('lblPopulacaoHa').innerText = '-';
+        document.getElementById('lblTotalPlantasArea').innerText = '-';
+        document.getElementById('lblDosePorPlanta').innerText = '-';
+      }
+    } else {
+      document.getElementById('boxCamposSolo').classList.add('hidden');
+      document.getElementById('boxDosePlantaResultado').classList.add('hidden');
     }
 
-    const prodTotal = produtoSelecionado.doseHa * area;
-    const caldaTotal = produtoSelecionado.volCaldaHa * area;
-
-    const unidadeProdLimpa = produtoSelecionado.unidadeDose.replace('/ha', '').trim();
-    const unidadeCaldaLimpa = produtoSelecionado.unidadeCalda.replace('/ha', '').trim();
-
-    document.getElementById('lblDoseHa').innerText = `${formatarNumero(produtoSelecionado.doseHa)} ${produtoSelecionado.unidadeDose}`;
-    document.getElementById('lblVolumeProdutoTotal').innerText = `${formatarNumero(prodTotal)} ${unidadeProdLimpa}`;
+    // Atualização dos Rótulos do Card
+    document.getElementById('lblTipoAplicacaoVal').innerText = produtoAtual.tipoAplicacao;
     
-    document.getElementById('lblVolCaldaHa').innerText = `${formatarNumero(produtoSelecionado.volCaldaHa)} ${produtoSelecionado.unidadeCalda}`;
-    document.getElementById('lblVolCaldaTotal').innerText = `${formatarNumero(caldaTotal)} ${unidadeCaldaLimpa}`;
+    // Dose / ha
+    const doseFormatted = formatarValorEUnidade(doseHaBase, unidadeDoseBase);
+    document.getElementById('lblDoseHa').innerText = `${doseFormatted.valorFormatted} ${doseFormatted.unidade}`;
 
-    document.getElementById('lblObservacao').innerText = produtoSelecionado.observacoes 
-      ? `💡 Obs. Técnica: ${produtoSelecionado.observacoes}` 
-      : '';
+    // Produto Total
+    if (areaHa > 0) {
+      const prodTotalBase = doseHaBase * areaHa;
+      const unidTotalBase = unidadeDoseBase.replace('/ha', '');
+      const prodTotalFormatted = formatarValorEUnidade(prodTotalBase, unidTotalBase);
+      document.getElementById('lblVolumeProdutoTotal').innerText = `${prodTotalFormatted.valorFormatted} ${prodTotalFormatted.unidade}`;
+    } else {
+      document.getElementById('lblVolumeProdutoTotal').innerText = '-';
+    }
 
-    cardResultado.classList.remove('hidden');
+    // Volume de Calda / ha e Total
+    const caldaHaFormatted = formatarValorEUnidade(volCaldaHaBase, unidadeCaldaBase);
+    document.getElementById('lblVolCaldaHa').innerText = `${caldaHaFormatted.valorFormatted} ${caldaHaFormatted.unidade}`;
+
+    if (areaHa > 0) {
+      const caldaTotalBase = volCaldaHaBase * areaHa;
+      const unidCaldaTotalBase = unidadeCaldaBase.replace('/ha', '');
+      const caldaTotalFormatted = formatarValorEUnidade(caldaTotalBase, unidCaldaTotalBase);
+      document.getElementById('lblVolCaldaTotal').innerText = `${caldaTotalFormatted.valorFormatted} ${caldaTotalFormatted.unidade}`;
+
+      // Cálculo por Tanque
+      if (capTanque > 0 && volCaldaHaBase > 0) {
+        document.getElementById('boxTanque').classList.remove('hidden');
+        const totalCalda = volCaldaHaBase * areaHa;
+        const numTanques = totalCalda / capTanque;
+        const prodPorTanqueBase = (doseHaBase / volCaldaHaBase) * capTanque;
+        const unidProdTanque = unidadeDoseBase.replace('/ha', '');
+        const prodTanqueFormatted = formatarValorEUnidade(prodPorTanqueBase, unidProdTanque);
+
+        document.getElementById('lblProdPorTanque').innerText = `${prodTanqueFormatted.valorFormatted} ${prodTanqueFormatted.unidade}/tanque`;
+        document.getElementById('lblNumTanques').innerText = `~ ${numTanques.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} tanques/bombas`;
+      } else {
+        document.getElementById('boxTanque').classList.add('hidden');
+      }
+    } else {
+      document.getElementById('lblVolCaldaTotal').innerText = '-';
+      document.getElementById('boxTanque').classList.add('hidden');
+    }
+
+    document.getElementById('lblObservacao').innerText = produtoAtual.observacoes ? `💡 Obs. Técnica: ${produtoAtual.observacoes}` : '';
+    document.getElementById('cardResultado').classList.remove('hidden');
   }
 
   function esconderResultado() {
@@ -191,42 +242,75 @@
   }
 
   function enviarWhatsApp() {
-    if (!produtoSelecionado) return;
+    if (!produtoAtual) return;
 
-    const areaInput = document.getElementById('inputArea').value.replace(',', '.');
-    const area = parseFloat(areaInput);
+    const areaHa = parseNum(document.getElementById('inputArea').value);
+    const capTanque = parseNum(document.getElementById('inputTanque').value);
+    const ehSolo = /solo|esguicho|drench|sulco/i.test(produtoAtual.tipoAplicacao);
 
-    if (isNaN(area) || area <= 0) {
-      alert("Por favor, informe uma área de aplicação válida em hectares.");
-      return;
+    const doseFormatted = formatarValorEUnidade(produtoAtual.doseHa, produtoAtual.unidadeDose);
+
+    let msg = `*PRESCRIÇÃO TÉCNICA - SYNGENTA BIOLOGICALS* 🌱\n\n`;
+    msg += `🚜 *Cultura:* ${produtoAtual.cultura}\n`;
+    msg += `🎯 *Alvo:* ${produtoAtual.alvo}\n`;
+    msg += `📦 *Produto:* ${produtoAtual.produto}\n`;
+    msg += `💦 *Aplicação:* ${produtoAtual.tipoAplicacao}\n`;
+    if (areaHa > 0) msg += `📏 *Área Total:* ${areaHa.toLocaleString('pt-BR')} ha\n`;
+
+    if (ehSolo) {
+      const espL = parseNum(document.getElementById('inputEspacamentoLinhas').value);
+      const espP = parseNum(document.getElementById('inputEspacamentoPlantas').value);
+      const esguicho = parseNum(document.getElementById('inputVolEsguicho').value);
+      
+      if (espL > 0 && espP > 0) {
+        const pop = Math.round(10000 / (espL * espP));
+        msg += `\n🌱 *PARÂMETROS DE POPULAÇÃO*\n`;
+        msg += `• Espaçamento: ${espL}m x ${espP}m\n`;
+        msg += `• População: ${pop.toLocaleString('pt-BR')} plantas/ha\n`;
+        if (esguicho > 0) msg += `• Esguicho: ${esguicho} mL/planta\n`;
+      }
     }
 
-    const prodTotal = formatarNumero(produtoSelecionado.doseHa * area);
-    const caldaTotal = formatarNumero(produtoSelecionado.volCaldaHa * area);
+    msg += `\n📋 *DOSAGEM E CALDA*\n`;
+    msg += `• *Dose/ha:* ${doseFormatted.valorFormatted} ${doseFormatted.unidade}\n`;
 
-    const unidadeProdLimpa = produtoSelecionado.unidadeDose.replace('/ha', '').trim();
-    const unidadeCaldaLimpa = produtoSelecionado.unidadeCalda.replace('/ha', '').trim();
+    if (areaHa > 0) {
+      const prodTotalFormatted = formatarValorEUnidade(produtoAtual.doseHa * areaHa, produtoAtual.unidadeDose.replace('/ha', ''));
+      msg += `• *Produto Total:* ${prodTotalFormatted.valorFormatted} ${prodTotalFormatted.unidade}\n`;
+      
+      let volCaldaHaBase = produtoAtual.volCaldaHa;
+      const espL = parseNum(document.getElementById('inputEspacamentoLinhas').value);
+      const espP = parseNum(document.getElementById('inputEspacamentoPlantas').value);
+      const esguicho = parseNum(document.getElementById('inputVolEsguicho').value);
 
-    const mensagem = 
-`*🌱 PRESCRIÇÃO TÉCNICA BIOLÓGICOS SYNGENTA*
----------------------------------------
-🚜 *Cultura:* ${produtoSelecionado.cultura}
-🐛 *Alvo:* ${produtoSelecionado.alvo}
-📦 *Produto:* *${produtoSelecionado.produto}*
+      if (ehSolo && espL > 0 && espP > 0 && esguicho > 0) {
+        volCaldaHaBase = (Math.round(10000 / (espL * espP)) * esguicho) / 1000;
+      }
 
-📐 *Área Recomendada:* ${formatarNumero(area)} ha
+      const caldaTotalFormatted = formatarValorEUnidade(volCaldaHaBase * areaHa, produtoAtual.unidadeCalda.replace('/ha', ''));
+      msg += `• *Volume Calda Total:* ${caldaTotalFormatted.valorFormatted} ${caldaTotalFormatted.unidade}\n`;
 
---- *DOSAGEM DE PRODUTO* ---
-📊 *Dose/ha:* ${formatarNumero(produtoSelecionado.doseHa)} ${produtoSelecionado.unidadeDose}
-🧮 *PRODUTO TOTAL:* *${prodTotal} ${unidadeProdLimpa}*
+      if (capTanque > 0 && volCaldaHaBase > 0) {
+        const prodTanqueFormatted = formatarValorEUnidade((produtoAtual.doseHa / volCaldaHaBase) * capTanque, produtoAtual.unidadeDose.replace('/ha', ''));
+        msg += `• *Por Tanque (${capTanque}L):* ${prodTanqueFormatted.valorFormatted} ${prodTanqueFormatted.unidade}\n`;
+      }
+    }
 
---- *TECNOLOGIA DE APLICAÇÃO* ---
-💧 *Volume de Calda/ha:* ${formatarNumero(produtoSelecionado.volCaldaHa)} ${produtoSelecionado.unidadeCalda}
-💦 *CALDA TOTAL NECESSÁRIA:* *${caldaTotal} ${unidadeCaldaLimpa}*
+    if (produtoAtual.observacoes) {
+      msg += `\n💡 *Observações:* ${produtoAtual.observacoes}\n`;
+    }
 
-${produtoSelecionado.observacoes ? `📝 *Obs. Técnica:* _${produtoSelecionado.observacoes}_\n` : ''}---------------------------------------
-_Syngenta Biologicals - Recomendação de Campo_`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+  }
 
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
+  function bloquearManual() {
+    document.getElementById('screenLock').classList.remove('hidden');
+    document.getElementById('inputPin').value = '';
+  }
+
+  function exibirLoader(flag) {
+    const el = document.getElementById('loadingStatus');
+    if (flag) el.classList.remove('hidden');
+    else el.classList.add('hidden');
   }
 </script>
