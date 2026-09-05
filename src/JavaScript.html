@@ -1,15 +1,67 @@
 <script>
   let baseProdutos = [];
   let produtoSelecionado = null;
+  let chaveAcessoSessao = '';
 
   document.addEventListener('DOMContentLoaded', () => {
-    carregarDadosDoServidor();
+    inicializarAutenticacao();
   });
 
   function alternarLoading(exibir) {
     const el = document.getElementById('loadingStatus');
     if (exibir) el.classList.remove('hidden');
     else el.classList.add('hidden');
+  }
+
+  function inicializarAutenticacao() {
+    // 1. Verifica parâmetro ?chave=7410 na URL
+    if (window.AUTORIZACAO_PREVIA_SERVIDOR) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const chaveUrl = urlParams.get('chave');
+      if (chaveUrl) {
+        localStorage.setItem('syngenta_app_pin', chaveUrl);
+        chaveAcessoSessao = chaveUrl;
+        desbloquearTela();
+        return;
+      }
+    }
+
+    // 2. Verifica se o PIN já foi salvo no celular
+    const pinSalvo = localStorage.getItem('syngenta_app_pin');
+    if (pinSalvo) {
+      chaveAcessoSessao = pinSalvo;
+      desbloquearTela();
+    }
+  }
+
+  function autenticarPorPin() {
+    const pinInput = document.getElementById('inputPin').value.trim();
+    if (!pinInput) return;
+
+    alternarLoading(true);
+    google.script.run
+      .withSuccessHandler((valido) => {
+        alternarLoading(false);
+        if (valido) {
+          localStorage.setItem('syngenta_app_pin', pinInput);
+          chaveAcessoSessao = pinInput;
+          document.getElementById('msgErroPin').classList.add('hidden');
+          desbloquearTela();
+        } else {
+          document.getElementById('msgErroPin').innerText = "PIN incorreto. Tente novamente.";
+          document.getElementById('msgErroPin').classList.remove('hidden');
+        }
+      })
+      .withFailureHandler(() => {
+        alternarLoading(false);
+        document.getElementById('msgErroPin').classList.remove('hidden');
+      })
+      .validarSenha(pinInput);
+  }
+
+  function desbloquearTela() {
+    document.getElementById('screenLock').classList.add('hidden');
+    carregarDadosDoServidor();
   }
 
   function formatarNumero(valor, maxDecimais = 2) {
@@ -25,7 +77,7 @@
     google.script.run
       .withSuccessHandler(aoCarregarSucesso)
       .withFailureHandler(aoCarregarErro)
-      .getDadosPrescricao();
+      .getDadosPrescricao(chaveAcessoSessao);
   }
 
   function aoCarregarSucesso(dados) {
@@ -36,7 +88,10 @@
 
   function aoCarregarErro(erro) {
     alternarLoading(false);
-    alert("⚠️ Erro ao carregar dados da planilha:\n\n" + erro.message);
+    localStorage.removeItem('syngenta_app_pin');
+    document.getElementById('screenLock').classList.remove('hidden');
+    document.getElementById('msgErroPin').innerText = "PIN inválido ou expirado.";
+    document.getElementById('msgErroPin').classList.remove('hidden');
   }
 
   function povoarDropdownCulturas() {
@@ -44,7 +99,7 @@
     const culturasUnicas = [...new Set(baseProdutos.map(item => item.cultura))].filter(Boolean);
 
     if (culturasUnicas.length === 0) {
-      selectCultura.innerHTML = `<option value="">Nenhum dado cadastrado</option>`;
+      selectCultura.innerHTML = `<option value="">Nenhum produto cadastrado</option>`;
       return;
     }
 
@@ -142,7 +197,7 @@
     const area = parseFloat(areaInput);
 
     if (isNaN(area) || area <= 0) {
-      alert("Por favor, informe uma área de aplicação válida.");
+      alert("Por favor, informe uma área de aplicação válida em hectares.");
       return;
     }
 
@@ -170,8 +225,7 @@
 💦 *CALDA TOTAL NECESSÁRIA:* *${caldaTotal} ${unidadeCaldaLimpa}*
 
 ${produtoSelecionado.observacoes ? `📝 *Obs. Técnica:* _${produtoSelecionado.observacoes}_\n` : ''}---------------------------------------
-_Prescrição elaborada por: Thais dos Santos Gomes_
-_Syngenta Biologicals_`;
+_Syngenta Biologicals - Recomendação de Campo_`;
 
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`, '_blank');
   }

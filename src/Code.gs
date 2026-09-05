@@ -1,12 +1,21 @@
 /**
- * Renderiza o WebApp do Prescritor Biológico Syngenta.
- * Função reservada do Google Apps Script para requisições HTTP GET.
- * @param {Object} e Parâmetros da requisição HTTP.
- * @returns {HtmlOutput} Página HTML renderizada.
+ * SENHA DE ACESSO RESTRITO DA APLICAÇÃO
+ */
+const SENHA_ACESSO = '7410';
+
+/**
+ * Renderiza o WebApp e valida preliminarmente se a chave foi passada via URL (?chave=7410).
+ * @param {Object} e Parâmetros HTTP GET.
+ * @returns {HtmlOutput}
  */
 function doGet(e) {
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
+  const chaveUrl = (e && e.parameter && e.parameter.chave) ? String(e.parameter.chave).trim() : '';
+  const autorizacaoPrevia = (chaveUrl === SENHA_ACESSO);
+
+  const template = HtmlService.createTemplateFromFile('Index');
+  template.autorizacaoPrevia = autorizacaoPrevia;
+  
+  return template.evaluate()
     .setTitle('Prescritor Biológicos | Syngenta')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -14,7 +23,7 @@ function doGet(e) {
 
 /**
  * Auxiliar para inclusão modular de arquivos HTML (CSS e JavaScript).
- * @param {string} filename Nome do arquivo a ser incluído.
+ * @param {string} filename Nome do arquivo na pasta src.
  * @returns {string} Conteúdo HTML.
  */
 function include(filename) {
@@ -22,9 +31,18 @@ function include(filename) {
 }
 
 /**
- * Converte strings/números do formato PT-BR para float válido do JS.
- * @param {any} valor Valor vindo da célula.
- * @returns {number} Número convertido.
+ * Valida o PIN informado no frontend.
+ * @param {string} senhaInformada 
+ * @returns {boolean}
+ */
+function validarSenha(senhaInformada) {
+  return String(senhaInformada).trim() === SENHA_ACESSO;
+}
+
+/**
+ * Converte valores no formato brasileiro (ex: "1,5" ou "1.250,50") para float.
+ * @param {any} valor 
+ * @returns {number}
  */
 function parseNumeroPTBR(valor) {
   if (valor === null || valor === undefined || valor === '') return 0;
@@ -40,14 +58,20 @@ function parseNumeroPTBR(valor) {
 }
 
 /**
- * Lê os dados da aba 'Base_Produtos' na planilha ativa.
- * @returns {Array<Object>} Lista de produtos estruturada.
+ * Busca e filtra os produtos na planilha do Google Sheets.
+ * Exige a senha de acesso válida para retornar os dados.
+ * @param {string} senha Senha enviada pelo cliente.
+ * @returns {Array<Object>} Lista de prescrições cadastradas.
  */
-function getDadosPrescricao() {
+function getDadosPrescricao(senha) {
+  if (String(senha).trim() !== SENHA_ACESSO) {
+    throw new Error("Acesso não autorizado. Chave incorreta.");
+  }
+
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (!ss) {
-      throw new Error("O script não está vinculado a uma planilha ativa do Google Sheets.");
+      throw new Error("Script não está vinculado a uma planilha ativa.");
     }
 
     const sheet = ss.getSheetByName('Base_Produtos');
@@ -58,7 +82,8 @@ function getDadosPrescricao() {
     const data = sheet.getDataRange().getDisplayValues();
     if (!data || data.length <= 1) return [];
 
-    data.shift(); // Remove a linha de cabeçalho
+    // Remove cabeçalho
+    data.shift();
 
     return data
       .filter(row => row[1] && String(row[1]).trim() !== '')
@@ -74,6 +99,6 @@ function getDadosPrescricao() {
         observacoes: String(row[8] || '').trim()
       }));
   } catch (erro) {
-    throw new Error("Erro no backend: " + erro.message);
+    throw new Error("Erro no servidor: " + erro.message);
   }
 }

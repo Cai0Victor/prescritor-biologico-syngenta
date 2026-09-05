@@ -1,12 +1,24 @@
 <style>
-  :root {
-    --syngenta-green: #008751;
-    --syngenta-dark: #006b40;
+  .bg-syngenta {
+    background-color: #008542;
+  }
+  .text-syngenta {
+    color: #008542;
+  }
+  
+  .loader {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 3px solid #ffffff;
+    width: 20px;
+    height: 20px;
+    animation: spin 0.8s linear infinite;
   }
 
-  .bg-syngenta { background-color: var(--syngenta-green); }
-  .bg-syngenta-dark { background-color: var(--syngenta-dark); }
-  .text-syngenta { color: var(--syngenta-green); }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
 
   .fade-in {
     animation: fadeIn 0.3s ease-in-out forwards;
@@ -15,19 +27,5 @@
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
-  }
-
-  .loader {
-    border: 3px solid #e2e8f0;
-    border-top: 3px solid var(--syngenta-green);
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
 </style>
