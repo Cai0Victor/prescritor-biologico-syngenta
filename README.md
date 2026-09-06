@@ -1,8 +1,16 @@
-# 🌾 Prescritor de Biológicos Syngenta
+# Prescritor Biológico Syngenta
 
-Aplicativo Web em Google Apps Script para prescrição e cálculo de dosagem de produtos biológicos em campo.
+Aplicativo WebApp desenvolvido em Google Apps Script para recomendação técnica e cálculo de dosagem de produtos biológicos.
 
-## 🚀 Publicação
-1. Autenticar no clasp na conta pessoal.
-2. `clasp push`
-3. `clasp deploy`
+## 🛠️ Tecnologias Utilizadas
+- **Backend:** Google Apps Script (V8 Engine)
+- **Frontend:** HTML5, Tailwind CSS, JavaScript ES6+
+- **Database:** Google Sheets (`Prescritor Biologico - Base`)
+- **CLI Sync:** `@google/clasp`
+- **Controle de Versão:** Git / GitHub
+
+## 🚀 Como Executar e Clonar Localmente
+
+1. **Instale o clasp globalmente (se ainda não tiver):**
+   ```bash
+   npm install -g @google/clasp

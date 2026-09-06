@@ -3,227 +3,645 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Prescritor Biológicos | Syngenta</title>
+  <title>Prescritor Biológico | Syngenta</title>
+  
+  <!-- PWA Meta Tags para iOS Safari -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Prescritor BIO">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            syngenta: {
-              DEFAULT: '#008050',
-              dark: '#00613d',
-              light: '#00a366',
-              soft: '#e6f4ed'
-            }
-          }
-        }
-      }
-    }
-  </script>
-  <?!= include('CSS'); ?>
-</head>
-<body class="bg-slate-100 text-slate-800 antialiased font-sans min-h-screen select-none">
 
-  <script>
-    window.AUTORIZACAO_PREVIA_SERVIDOR = <?= autorizacaoPrevia ?>;
-  </script>
-
-  <div class="max-w-md mx-auto bg-white min-h-screen shadow-2xl flex flex-col relative">
+  <style>
+    .bg-syngenta { background-color: #007A33; }
+    .text-syngenta { color: #007A33; }
+    .border-syngenta { border-color: #007A33; }
     
-    <!-- Header -->
-    <header class="bg-syngenta text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-30">
-      <div class="flex items-center gap-3">
-        <div class="bg-white/10 p-2 rounded-xl border border-white/20 flex items-center justify-center">
-          <span class="text-2xl">🌱</span>
-        </div>
-        <div>
-          <h1 class="font-extrabold text-base leading-tight">Prescritor Biológico</h1>
-          <p class="text-xs text-emerald-100 font-medium">Syngenta Biologicals</p>
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-2">
-        <div id="loadingStatus" class="hidden">
-          <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-        </div>
-        <button onclick="bloquearManual()" title="Bloquear Aplicativo" class="p-2 bg-syngenta-dark hover:bg-emerald-900 rounded-xl transition active:scale-95 text-sm border border-emerald-600/50">
-          🔒
-        </button>
-      </div>
-    </header>
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff !important; padding: 0 !important; color: #000000 !important; }
+      .print-card { box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800">
 
-    <!-- Modal Lock Screen (PIN) -->
-    <div id="screenLock" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div class="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-xs text-center space-y-5 border border-slate-100">
-        <div class="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
-          <span class="text-3xl">🔒</span>
-        </div>
+  <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden print-card">
+    
+    <!-- Cabeçalho -->
+    <div class="bg-syngenta text-white p-6">
+      <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-lg font-bold text-slate-800">Acesso Restrito</h2>
-          <p class="text-xs text-slate-500 mt-1">Informe o PIN de acesso para continuar.</p>
+          <h1 class="text-2xl font-bold tracking-tight">🌱 Syngenta Biologicals</h1>
+          <p class="text-green-100 text-sm mt-1">Calculadora de Dosagem & Prescritor Técnico de Campo</p>
         </div>
-        
-        <div class="space-y-2">
-          <input type="password" id="inputPin" inputmode="numeric" placeholder="••••" maxlength="8" class="w-full text-center tracking-widest text-2xl font-bold p-3 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-syngenta outline-none bg-slate-50">
-          <p id="msgErroPin" class="text-xs font-semibold text-red-500 hidden"></p>
+        <div class="flex flex-col items-end gap-1">
+          <span class="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm no-print">
+            v1.7
+          </span>
+          <span id="statusConexao" class="text-[10px] text-green-200 font-mono no-print">Sincronizando...</span>
         </div>
-
-        <button onclick="autenticarPorPin()" class="w-full bg-syngenta hover:bg-syngenta-dark text-white font-bold py-3.5 rounded-2xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2">
-          <span>Desbloquear</span>
-          <span>➔</span>
-        </button>
       </div>
     </div>
 
+    <!-- State: Loader -->
+    <div id="loader" class="p-12 text-center">
+      <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-syngenta border-t-transparent"></div>
+      <p id="loaderTexto" class="text-slate-500 text-sm mt-3 font-medium">Carregando catálogo de biológicos...</p>
+    </div>
+
     <!-- Conteúdo Principal -->
-    <main class="p-4 flex-1 space-y-4">
+    <div id="mainContent" class="p-6 space-y-6 hidden">
       
-      <!-- PAINEL 1: SELEÇÃO TÉCNICA -->
-      <section class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3.5 shadow-xs">
-        <h2 class="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-2">
-          📋 1. Seleção Técnica
-        </h2>
+      <!-- Formulário de Seleção e Parâmetros -->
+      <form id="prescritorForm" onsubmit="event.preventDefault();" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         
+        <!-- 1. Cultura -->
         <div>
-          <label for="selectCultura" class="block text-xs font-bold text-slate-700 mb-1">Cultura</label>
-          <select id="selectCultura" onchange="aoMudarCultura()" class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-syngenta outline-none">
-            <option value="">Carregando culturas...</option>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Cultura</label>
+          <select id="selectCultura" class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-green-600 focus:outline-none transition" onchange="aoMudarCultura()">
+            <option value="">Selecione a cultura...</option>
           </select>
         </div>
 
+        <!-- 2. Alvo / Praga / Doença -->
         <div>
-          <label for="selectAlvo" class="block text-xs font-bold text-slate-700 mb-1">Alvo / Praga / Doença</label>
-          <select id="selectAlvo" onchange="aoMudarAlvo()" disabled class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-syngenta outline-none disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="">Selecione primeiro a Cultura</option>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Alvo / Praga / Doença</label>
+          <select id="selectAlvo" disabled class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-green-600 focus:outline-none transition disabled:bg-slate-200" onchange="aoMudarAlvo()">
+            <option value="">Selecione a cultura primeiro...</option>
           </select>
         </div>
 
-        <div>
-          <label for="selectProduto" class="block text-xs font-bold text-slate-700 mb-1">Produto Recomendado</label>
-          <select id="selectProduto" onchange="aoMudarProduto()" disabled class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-syngenta outline-none disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="">Selecione o Alvo</option>
+        <!-- 3. Produto Biológico -->
+        <div class="md:col-span-2">
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Produto Biológico</label>
+          <select id="selectProduto" disabled class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-green-600 focus:outline-none transition disabled:bg-slate-200" onchange="aoMudarProduto()">
+            <option value="">Selecione o alvo primeiro...</option>
           </select>
         </div>
 
-        <!-- Parâmetros Operacionais Gerais -->
-        <div class="grid grid-cols-2 gap-3 pt-1">
-          <div>
-            <label for="inputArea" class="block text-xs font-bold text-slate-700 mb-1">Área Total (ha)</label>
-            <input type="number" id="inputArea" placeholder="Ex: 10" oninput="calcular()" min="0.1" step="any" class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-syngenta outline-none">
+        <!-- 4. Área Total (Hectares) -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Área Total (Hectares)</label>
+          <input type="number" id="areaHa" step="0.1" min="0.1" value="100" 
+            class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:ring-2 focus:ring-green-600 focus:outline-none transition"
+            oninput="calcularDosagem()">
+        </div>
+
+        <!-- 5. Capacidade Tanque / Bomba (L) -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Capacidade Tanque / Bomba (L)</label>
+          <input type="number" id="capacidadeTanque" step="1" min="1" value="2000" 
+            placeholder="Ex: 2000 (Trator) ou 20 (Bomba)"
+            class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:ring-2 focus:ring-green-600 focus:outline-none transition"
+            oninput="calcularDosagem()">
+        </div>
+
+        <!-- CAMPO CONDICIONAL: VIA SOLO -->
+        <div id="containerViaSolo" class="md:col-span-2 bg-amber-50/80 border border-amber-300 p-4 rounded-xl space-y-3 hidden">
+          <div class="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wide">
+            <span>🚜 Parâmetros de Aplicação Via Solo / Esguicho (Drench)</span>
           </div>
-          <div>
-            <label id="lblInputTanque" for="inputTanque" class="block text-xs font-bold text-slate-700 mb-1">Tanque / Bomba (L)</label>
-            <input type="number" id="inputTanque" placeholder="Ex: 20" oninput="calcular()" min="1" step="any" class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-syngenta outline-none">
-          </div>
-        </div>
-
-        <!-- CAMPOS DINÂMICOS: VIA SOLO / ESGUICHO -->
-        <div id="boxCamposSolo" class="hidden p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl space-y-3">
-          <p class="text-xs font-bold text-amber-900 flex items-center gap-1.5 border-b border-amber-200 pb-1.5">
-            🌱 Parâmetros Espaciais (Aplicação Via Solo / Esguicho)
-          </p>
-
-          <div class="grid grid-cols-2 gap-2.5">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label for="inputEspacamentoLinhas" class="block text-[11px] font-bold text-amber-900 mb-1">Espaç. Linhas (m)</label>
-              <input type="number" id="inputEspacamentoLinhas" placeholder="Ex: 2.5" oninput="calcular()" min="0.1" step="any" class="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Esguicho (mL / planta)</label>
+              <input type="number" id="volumeEsguicho" step="1" min="1" value="50" 
+                placeholder="Ex: 50 mL"
+                class="w-full p-2.5 bg-white border border-amber-300 rounded-lg text-slate-900 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none transition"
+                oninput="calcularDosagem()">
             </div>
             <div>
-              <label for="inputEspacamentoPlantas" class="block text-[11px] font-bold text-amber-900 mb-1">Espaç. Plantas (m)</label>
-              <input type="number" id="inputEspacamentoPlantas" placeholder="Ex: 0.5" oninput="calcular()" min="0.1" step="any" class="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Espaçamento Linhas (m)</label>
+              <input type="number" id="espacamentoLinhas" step="0.01" min="0.01" value="0.50" 
+                placeholder="Ex: 0.50"
+                class="w-full p-2.5 bg-white border border-amber-300 rounded-lg text-slate-900 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none transition"
+                oninput="calcularDosagem()">
             </div>
-          </div>
-
-          <div>
-            <label for="inputVolEsguicho" class="block text-[11px] font-bold text-amber-900 mb-1">Volume Esguicho (mL/planta)</label>
-            <input type="number" id="inputVolEsguicho" placeholder="Ex: 50" oninput="calcular()" min="1" step="any" class="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Espaçamento Plantas (m)</label>
+              <input type="number" id="espacamentoPlantas" step="0.01" min="0.01" value="0.20" 
+                placeholder="Ex: 0.20"
+                class="w-full p-2.5 bg-white border border-amber-300 rounded-lg text-slate-900 font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none transition"
+                oninput="calcularDosagem()">
+            </div>
           </div>
         </div>
 
-      </section>
+      </form>
 
-      <!-- PAINEL 2: RESUMO DA PRESCRIÇÃO -->
-      <section id="cardResultado" class="hidden bg-syngenta-soft p-4 rounded-2xl border border-emerald-200 space-y-3.5 transition-all">
-        <h2 class="text-xs font-extrabold text-syngenta-dark uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-200/80 pb-2">
-          📊 2. Resumo da Prescrição
-        </h2>
+      <!-- Ficha Técnica -->
+      <div id="cardDetalhes" class="hidden border border-slate-200 rounded-xl p-4 bg-slate-50/80 space-y-3">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Parâmetros de Recomendação</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div>
+            <span class="text-slate-400 block text-xs">Aplicação</span>
+            <span id="lblTipoAplicacao" class="font-bold text-slate-800">-</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-xs">Dose / ha</span>
+            <span id="lblDoseHa" class="font-bold text-slate-800">-</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-xs">Vol. Calda / ha</span>
+            <span id="lblVolCaldaHa" class="font-bold text-slate-800">-</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-xs">Observações</span>
+            <span id="lblObservacoes" class="font-medium text-slate-700 italic">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumo dos Cálculos -->
+      <div id="cardResultados" class="hidden space-y-4">
         
-        <!-- Tipo de Aplicação -->
-        <div id="boxTipoAplicacaoCard" class="bg-white p-3.5 rounded-xl border border-emerald-200/80 flex items-center justify-between shadow-xs">
-          <div class="flex items-center gap-3">
-            <span id="iconeTipoAplicacao" class="text-2xl">💦</span>
-            <div>
-              <p class="text-[10px] font-bold text-slate-400 uppercase leading-none">Tipo de Aplicação</p>
-              <p id="lblTipoAplicacaoVal" class="text-sm font-black text-syngenta-dark mt-1">-</p>
+        <!-- Indicadores Exclusivos: Via Solo -->
+        <div id="cardInfoViaSolo" class="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-3 hidden">
+          <div class="flex items-center justify-between border-b border-amber-200/60 pb-2">
+            <h2 class="text-xs font-extrabold text-amber-900 uppercase tracking-wide">
+              🪴 Métricas de Aplicação Via Solo / Esguicho
+            </h2>
+            <span id="lblArranjoResumo" class="text-xs font-semibold text-amber-800 bg-amber-200/60 px-2.5 py-0.5 rounded-full">
+              Arranjo: 0,50m x 0,20m
+            </span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-amber-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Dose por Planta</span>
+              <p id="resDosePorPlanta" class="text-lg font-black text-amber-800 mt-0.5">-</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-amber-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Dose por Tanque / Bomba</span>
+              <p id="resDosePorTanqueBomba" class="text-lg font-black text-amber-900 mt-0.5">-</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-amber-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Plantas por Hectare</span>
+              <p id="resPlantasPorHa" class="text-lg font-black text-slate-800 mt-0.5">-</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-amber-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Plantas na Área Total</span>
+              <p id="resPlantasAreaTotal" class="text-lg font-black text-slate-800 mt-0.5">-</p>
             </div>
           </div>
-          <span class="text-[10px] font-extrabold px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 uppercase">Recomendado</span>
         </div>
 
-        <!-- Métricas de População & Planta (Ativo Apenas Via Solo) -->
-        <div id="boxDosePlantaResultado" class="hidden bg-amber-100/80 p-3.5 rounded-xl border border-amber-300 space-y-1.5 text-sm">
-          <p class="text-xs font-bold text-amber-900 uppercase flex items-center gap-1 border-b border-amber-200 pb-1">🌱 População & Dose por Planta</p>
-          <div class="space-y-1 pt-0.5">
-            <p class="flex justify-between text-xs text-amber-950"><span class="text-slate-600 font-medium">População Estimada:</span> <span id="lblPopulacaoHa" class="font-bold">-</span></p>
-            <p class="flex justify-between text-xs text-amber-950"><span class="text-slate-600 font-medium">Plantas na Área Total:</span> <span id="lblTotalPlantasArea" class="font-bold">-</span></p>
-            <p class="flex justify-between border-t border-amber-300/80 pt-1.5 font-bold text-amber-900 text-sm">
-              <span>DOSE POR PLANTA:</span>
-              <span id="lblDosePorPlanta" class="text-base text-amber-950 font-extrabold">-</span>
-            </p>
+        <!-- Totais da Área -->
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-5 space-y-3">
+          <div class="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+            <h2 class="text-xs font-extrabold text-emerald-900 uppercase tracking-wide">
+              📊 Necessidade Total para a Área
+            </h2>
+            <span id="lblAreaResumo" class="text-xs font-semibold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full">
+              100 ha
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-emerald-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Produto Total</span>
+              <p id="resTotalProduto" class="text-lg font-black text-syngenta mt-0.5">-</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-emerald-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Calda Total</span>
+              <p id="resTotalCalda" class="text-lg font-black text-slate-800 mt-0.5">-</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-emerald-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Distribuição Cargas</span>
+              <p id="resResumoCargas" class="text-lg font-black text-slate-800 mt-0.5">-</p>
+            </div>
           </div>
         </div>
 
-        <!-- Produto Biológico -->
-        <div class="bg-white p-3.5 rounded-xl border border-emerald-100 space-y-1.5 text-sm shadow-xs">
-          <p class="text-xs font-extrabold text-syngenta uppercase tracking-wide">📦 Produto Biológico</p>
-          <p class="flex justify-between text-xs"><span class="text-slate-500 font-medium">Dose/ha:</span> <span id="lblDoseHa" class="font-bold text-slate-800">-</span></p>
-          <p class="flex justify-between border-t border-slate-100 pt-1.5 items-baseline">
-            <span class="text-slate-600 font-bold text-xs">Produto Total:</span> 
-            <span id="lblVolumeProdutoTotal" class="text-base font-black text-syngenta">-</span>
-          </p>
+        <!-- Receita: Cargas Cheias -->
+        <div id="cardCargaCheia" class="bg-blue-50 border border-blue-200 rounded-xl p-5 space-y-3 hidden">
+          <div class="flex items-center justify-between border-b border-blue-200/60 pb-2">
+            <h2 class="text-xs font-extrabold text-blue-900 uppercase tracking-wide">
+              🚜 Receita por Tanque / Bomba Cheia (<span id="lblQtdCargasCheias">0</span>x)
+            </h2>
+            <span id="lblTanqueCheioResumo" class="text-xs font-semibold text-blue-800 bg-blue-200/60 px-2.5 py-0.5 rounded-full">
+              Tanque: 2.000 L
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-blue-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Produto / Tanque Cheio</span>
+              <p id="resDosePorTanqueCheio" class="text-lg font-black text-blue-700 mt-0.5">-</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-blue-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Água / Tanque Cheio</span>
+              <p id="resAguaPorTanqueCheio" class="text-lg font-black text-cyan-700 mt-0.5">-</p>
+            </div>
+          </div>
         </div>
 
-        <!-- Volume de Calda -->
-        <div class="bg-white p-3.5 rounded-xl border border-emerald-100 space-y-1.5 text-sm shadow-xs">
-          <p id="lblTituloVolumeCalda" class="text-xs font-extrabold text-sky-700 uppercase tracking-wide">💧 Volume de Calda</p>
-          <p class="flex justify-between text-xs"><span id="lblRotuloVolCaldaHa" class="text-slate-500 font-medium">Volume/ha:</span> <span id="lblVolCaldaHa" class="font-bold text-slate-800">-</span></p>
-          <p class="flex justify-between border-t border-slate-100 pt-1.5 items-baseline">
-            <span class="text-slate-600 font-bold text-xs">Volume Total:</span> 
-            <span id="lblVolCaldaTotal" class="text-base font-black text-sky-700">-</span>
-          </p>
+        <!-- Receita: Carga Parcial -->
+        <div id="cardCargaParcial" class="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-3 hidden">
+          <div class="flex items-center justify-between border-b border-amber-200/60 pb-2">
+            <h2 id="lblTituloCargaParcial" class="text-xs font-extrabold text-amber-900 uppercase tracking-wide">
+              ⚠️ Receita da Carga Parcial
+            </h2>
+            <span id="lblVolCaldaParcial" class="text-xs font-semibold text-amber-800 bg-amber-200/60 px-2.5 py-0.5 rounded-full">
+              Calda: 0 L
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-amber-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Produto na Carga Parcial</span>
+              <p id="resDoseParcial" class="text-lg font-black text-amber-700 mt-0.5">-</p>
+            </div>
+            <div class="bg-white p-3.5 rounded-lg shadow-sm border border-amber-100">
+              <span class="text-xs text-slate-500 font-medium uppercase">Água na Carga Parcial</span>
+              <p id="resAguaParcial" class="text-lg font-black text-amber-900 mt-0.5">-</p>
+            </div>
+          </div>
         </div>
 
-        <!-- Preparo por Tanque / Bomba -->
-        <div id="boxTanque" class="hidden bg-amber-50/90 p-3.5 rounded-xl border border-amber-200 space-y-1.5 text-sm">
-          <p id="lblTituloTanque" class="text-xs font-extrabold text-amber-900 uppercase">🚜 Preparo por Tanque / Bomba</p>
-          <p class="flex justify-between border-t border-amber-200/60 pt-1.5 items-baseline">
-            <span class="text-slate-700 font-bold text-xs">Produto / Tanque:</span> 
-            <span id="lblProdPorTanque" class="text-base font-black text-amber-900">-</span>
-          </p>
-          <p class="flex justify-between text-xs text-slate-600 border-t border-amber-200/40 pt-1">
-            <span class="font-medium">Estimativa de Recargas:</span> 
-            <span id="lblNumTanques" class="font-bold text-slate-800">-</span>
-          </p>
-        </div>
+      </div>
 
-        <p id="lblObservacao" class="text-xs text-slate-600 italic border-t border-emerald-200/60 pt-2"></p>
+      <!-- Botões de Ação -->
+      <div id="cardAcoes" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3 no-print">
+        <button onclick="compartilharWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
+          📲 Enviar no WhatsApp
+        </button>
+        <button onclick="gerarPDF()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 transition">
+          📄 Gerar PDF / Imprimir
+        </button>
+      </div>
 
-        <!-- Ação WhatsApp -->
-        <div class="pt-2 border-t border-emerald-200">
-          <button onclick="enviarWhatsApp()" class="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2.5 shadow-md transition active:scale-95 text-base">
-            <span class="text-xl">📲</span> Enviar Prescrição WhatsApp
-          </button>
-        </div>
-      </section>
-
-    </main>
-
-    <footer class="p-3 text-center text-[11px] font-medium text-slate-400 border-t border-slate-200 bg-slate-50">
-      Syngenta Biologicals &copy; Prescritor Agrocampo
-    </footer>
+    </div>
   </div>
 
-  <?!= include('JavaScript'); ?>
+  <script>
+    // URL DE IMPLANTAÇÃO WEBAPP DO SEU GOOGLE APPS SCRIPT
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIpuLctu0c24Ndl0Urr79vHpLHDlzHLOdCH14J57PKBmg8_HtTfPDx5vbs9L60Vomb/exec";
+
+    let baseProdutos = [];
+    let produtoSelecionado = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      inicializarAplicativo();
+      registrarServiceWorker();
+    });
+
+    function inicializarAplicativo() {
+      const dadosSalvos = localStorage.getItem('syngenta_catalogo_cache');
+      const statusEl = document.getElementById('statusConexao');
+
+      if (dadosSalvos) {
+        try {
+          baseProdutos = JSON.parse(dadosSalvos);
+          popularCulturas();
+          exibirConteudoPrincipal();
+          if (statusEl) statusEl.innerText = "Modo Offline Activo";
+        } catch (e) {
+          console.error("Erro ao ler cache local:", e);
+        }
+      }
+
+      if (navigator.onLine && APPS_SCRIPT_URL && !APPS_SCRIPT_URL.includes("URL_DO_SEU_WEBAPP")) {
+        fetch(`${APPS_SCRIPT_URL}?action=getDados`)
+          .then(res => res.json())
+          .then(dados => {
+            if (dados && dados.length > 0) {
+              baseProdutos = dados;
+              localStorage.setItem('syngenta_catalogo_cache', JSON.stringify(dados));
+              popularCulturas();
+              if (statusEl) statusEl.innerText = "Sincronizado Online";
+            }
+            exibirConteudoPrincipal();
+          })
+          .catch(err => {
+            console.warn("Servidor offline. Mantendo cache local.", err);
+            if (statusEl) statusEl.innerText = "Modo Offline (Cache)";
+            exibirConteudoPrincipal();
+          });
+      } else if (!dadosSalvos) {
+        const txtLoader = document.getElementById('loaderTexto');
+        if (txtLoader) txtLoader.innerText = "Configure a URL da API no arquivo index.html para o primeiro carregamento.";
+      }
+    }
+
+    function exibirConteudoPrincipal() {
+      const loader = document.getElementById('loader');
+      const mainContent = document.getElementById('mainContent');
+      if (loader) loader.classList.add('hidden');
+      if (mainContent) mainContent.classList.remove('hidden');
+    }
+
+    function popularCulturas() {
+      const select = document.getElementById('selectCultura');
+      const valorAtual = select.value;
+      const culturas = [...new Set(baseProdutos.map(p => p.cultura))].sort();
+      
+      select.innerHTML = '<option value="">Selecione a cultura...</option>';
+      culturas.forEach(c => select.innerHTML += `<option value="${c}">${c}</option>`);
+      
+      if (valorAtual) select.value = valorAtual;
+    }
+
+    function aoMudarCultura() {
+      const cultura = document.getElementById('selectCultura').value;
+      const selectAlvo = document.getElementById('selectAlvo');
+
+      resetarSelecaoProduto();
+
+      if (!cultura) {
+        selectAlvo.disabled = true;
+        selectAlvo.innerHTML = '<option value="">Selecione a cultura primeiro...</option>';
+        return;
+      }
+
+      const alvos = [...new Set(baseProdutos.filter(p => p.cultura === cultura).map(p => p.alvo))].sort();
+      selectAlvo.innerHTML = '<option value="">Selecione o alvo...</option>';
+      alvos.forEach(a => selectAlvo.innerHTML += `<option value="${a}">${a}</option>`);
+      selectAlvo.disabled = false;
+    }
+
+    function aoMudarAlvo() {
+      const cultura = document.getElementById('selectCultura').value;
+      const alvo = document.getElementById('selectAlvo').value;
+      const selectProduto = document.getElementById('selectProduto');
+
+      resetarSelecaoProduto();
+
+      if (!alvo) {
+        selectProduto.disabled = true;
+        selectProduto.innerHTML = '<option value="">Selecione o alvo primeiro...</option>';
+        return;
+      }
+
+      const produtos = baseProdutos.filter(p => p.cultura === cultura && p.alvo === alvo);
+      selectProduto.innerHTML = '<option value="">Selecione o produto...</option>';
+      produtos.forEach(p => selectProduto.innerHTML += `<option value="${p.id}">${p.produto}</option>`);
+      selectProduto.disabled = false;
+    }
+
+    function isAplicacaoViaSolo(tipoApp) {
+      if (!tipoApp) return false;
+      return tipoApp.toLowerCase().includes('solo');
+    }
+
+    function aoMudarProduto() {
+      const idProduto = document.getElementById('selectProduto').value;
+      if (!idProduto) {
+        resetarSelecaoProduto();
+        return;
+      }
+
+      produtoSelecionado = baseProdutos.find(p => String(p.id) === String(idProduto));
+
+      if (produtoSelecionado) {
+        document.getElementById('lblTipoAplicacao').innerText = produtoSelecionado.tipoAplicacao || '-';
+        document.getElementById('lblDoseHa').innerText = `${produtoSelecionado.doseHa} ${produtoSelecionado.unidadeDose}`;
+        document.getElementById('lblVolCaldaHa').innerText = `${produtoSelecionado.volCalda} ${produtoSelecionado.unidadeCalda}`;
+        document.getElementById('lblObservacoes').innerText = produtoSelecionado.observacoes || 'Nenhuma';
+
+        const containerSolo = document.getElementById('containerViaSolo');
+        if (isAplicacaoViaSolo(produtoSelecionado.tipoAplicacao)) {
+          containerSolo.classList.remove('hidden');
+        } else {
+          containerSolo.classList.add('hidden');
+        }
+
+        document.getElementById('cardDetalhes').classList.remove('hidden');
+        document.getElementById('cardResultados').classList.remove('hidden');
+        document.getElementById('cardAcoes').classList.remove('hidden');
+
+        calcularDosagem();
+      }
+    }
+
+    function resetarSelecaoProduto() {
+      produtoSelecionado = null;
+      document.getElementById('containerViaSolo').classList.add('hidden');
+      document.getElementById('cardInfoViaSolo').classList.add('hidden');
+      document.getElementById('cardDetalhes').classList.add('hidden');
+      document.getElementById('cardResultados').classList.add('hidden');
+      document.getElementById('cardAcoes').classList.add('hidden');
+    }
+
+    function extrairUnidadeBase(unidade) {
+      if (!unidade) return '';
+      return unidade.split('/')[0].trim();
+    }
+
+    function processarDose(doseCalculada, unidadeBase) {
+      let valor = doseCalculada;
+      let unidade = unidadeBase;
+
+      if (unidade.toUpperCase() === 'L' && valor > 0 && valor < 1) {
+        valor = valor * 1000;
+        unidade = 'mL';
+      } else if (unidade.toUpperCase() === 'KG' && valor > 0 && valor < 1) {
+        valor = valor * 1000;
+        unidade = 'g';
+      }
+
+      return {
+        valorFormatted: valor.toLocaleString('pt-BR', { maximumFractionDigits: 2 }),
+        unidade: unidade
+      };
+    }
+
+    function obterCalculosGerais() {
+      const area = parseFloat(document.getElementById('areaHa').value) || 0;
+      const capTanque = parseFloat(document.getElementById('capacidadeTanque').value) || 0;
+      const unProdBase = extrairUnidadeBase(produtoSelecionado.unidadeDose);
+      const unCaldaBase = extrairUnidadeBase(produtoSelecionado.unidadeCalda);
+
+      let volCaldaHaEfetivo = produtoSelecionado.volCalda;
+
+      let esguichoMl = parseFloat(document.getElementById('volumeEsguicho').value) || 0;
+      let espacamentoL = parseFloat(document.getElementById('espacamentoLinhas').value) || 0;
+      let espacamentoP = parseFloat(document.getElementById('espacamentoPlantas').value) || 0;
+
+      let plantasPorHa = 0;
+      let plantasAreaTotal = 0;
+      let dosePorPlantaBruta = 0;
+      let infoDosePlanta = { valorFormatted: '0', unidade: 'mL/planta' };
+
+      const ehViaSolo = isAplicacaoViaSolo(produtoSelecionado.tipoAplicacao);
+
+      if (ehViaSolo && espacamentoL > 0 && espacamentoP > 0) {
+        plantasPorHa = 10000 / (espacamentoL * espacamentoP);
+        plantasAreaTotal = plantasPorHa * area;
+        dosePorPlantaBruta = produtoSelecionado.doseHa / plantasPorHa;
+
+        if (unProdBase.toUpperCase() === 'L') {
+          infoDosePlanta = {
+            valorFormatted: (dosePorPlantaBruta * 1000).toLocaleString('pt-BR', { maximumFractionDigits: 3 }),
+            unidade: 'mL/planta'
+          };
+        } else if (unProdBase.toUpperCase() === 'KG') {
+          infoDosePlanta = {
+            valorFormatted: (dosePorPlantaBruta * 1000).toLocaleString('pt-BR', { maximumFractionDigits: 3 }),
+            unidade: 'g/planta'
+          };
+        } else {
+          infoDosePlanta = {
+            valorFormatted: dosePorPlantaBruta.toLocaleString('pt-BR', { maximumFractionDigits: 3 }),
+            unidade: `${unProdBase}/planta`
+          };
+        }
+
+        if (esguichoMl > 0) {
+          volCaldaHaEfetivo = (plantasPorHa * esguichoMl) / 1000;
+        }
+      }
+
+      const totalProduto = (produtoSelecionado.doseHa * area);
+      const totalCalda = (volCaldaHaEfetivo * area);
+
+      const cargasCheias = Math.floor(totalCalda / capTanque);
+      const caldaParcial = totalCalda % capTanque;
+
+      const dosePorTanqueCheioBruta = (produtoSelecionado.doseHa / volCaldaHaEfetivo) * capTanque;
+      const infoDoseCheia = processarDose(dosePorTanqueCheioBruta, unProdBase);
+
+      let volProdCheioLitros = unProdBase.toUpperCase() === 'L' ? dosePorTanqueCheioBruta : (unProdBase.toUpperCase() === 'ML' ? dosePorTanqueCheioBruta / 1000 : 0);
+      const aguaTanqueCheio = Math.max(0, capTanque - volProdCheioLitros);
+
+      let doseParcialBruta = 0;
+      let aguaParcial = 0;
+      let infoDoseParcial = { valorFormatted: '0', unidade: unProdBase };
+
+      if (caldaParcial > 0) {
+        doseParcialBruta = (produtoSelecionado.doseHa / volCaldaHaEfetivo) * caldaParcial;
+        infoDoseParcial = processarDose(doseParcialBruta, unProdBase);
+
+        let volProdParcialLitros = unProdBase.toUpperCase() === 'L' ? doseParcialBruta : (unProdBase.toUpperCase() === 'ML' ? doseParcialBruta / 1000 : 0);
+        aguaParcial = Math.max(0, caldaParcial - volProdParcialLitros);
+      }
+
+      return {
+        area, capTanque, totalProduto, totalCalda, unProdBase, unCaldaBase, volCaldaHaEfetivo,
+        cargasCheias, caldaParcial, infoDoseCheia, aguaTanqueCheio,
+        doseParcialBruta, infoDoseParcial, aguaParcial,
+        esguichoMl, espacamentoL, espacamentoP,
+        plantasPorHa, plantasAreaTotal, infoDosePlanta, dosePorTanqueCheioBruta
+      };
+    }
+
+    function calcularDosagem() {
+      if (!produtoSelecionado) return;
+
+      const c = obterCalculosGerais();
+
+      document.getElementById('lblAreaResumo').innerText = `${c.area.toLocaleString('pt-BR')} ha`;
+      document.getElementById('resTotalProduto').innerText = `${c.totalProduto.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${c.unProdBase}`;
+      document.getElementById('resTotalCalda').innerText = `${c.totalCalda.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${c.unCaldaBase}`;
+
+      const cardViaSolo = document.getElementById('cardInfoViaSolo');
+      if (isAplicacaoViaSolo(produtoSelecionado.tipoAplicacao)) {
+        cardViaSolo.classList.remove('hidden');
+        document.getElementById('lblArranjoResumo').innerText = `Arranjo: ${c.espacamentoL.toLocaleString('pt-BR')}m x ${c.espacamentoP.toLocaleString('pt-BR')}m (${c.esguichoMl} mL/planta)`;
+        document.getElementById('resDosePorPlanta').innerText = `${c.infoDosePlanta.valorFormatted} ${c.infoDosePlanta.unidade}`;
+        document.getElementById('resDosePorTanqueBomba').innerText = `${c.infoDoseCheia.valorFormatted} ${c.infoDoseCheia.unidade}`;
+        document.getElementById('resPlantasPorHa').innerText = `${c.plantasPorHa.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} plantas/ha`;
+        document.getElementById('resPlantasAreaTotal').innerText = `${c.plantasAreaTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} plantas`;
+      } else {
+        cardViaSolo.classList.add('hidden');
+      }
+
+      const cardCheia = document.getElementById('cardCargaCheia');
+      const cardParcial = document.getElementById('cardCargaParcial');
+
+      if (c.cargasCheias > 0) {
+        cardCheia.classList.remove('hidden');
+        document.getElementById('lblQtdCargasCheias').innerText = c.cargasCheias;
+        document.getElementById('lblTanqueCheioResumo').innerText = `Tanque: ${c.capTanque.toLocaleString('pt-BR')} L`;
+        document.getElementById('resDosePorTanqueCheio').innerText = `${c.infoDoseCheia.valorFormatted} ${c.infoDoseCheia.unidade}`;
+        document.getElementById('resAguaPorTanqueCheio').innerText = `${c.aguaTanqueCheio.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L`;
+      } else {
+        cardCheia.classList.add('hidden');
+      }
+
+      if (c.caldaParcial > 0) {
+        cardParcial.classList.remove('hidden');
+        const titulo = c.cargasCheias === 0 ? "⚠️ Receita da Carga Única (Parcial)" : "⚠️ Receita da Última Carga Parcial";
+        document.getElementById('lblTituloCargaParcial').innerText = titulo;
+        document.getElementById('lblVolCaldaParcial').innerText = `Calda: ${c.caldaParcial.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L`;
+        document.getElementById('resDoseParcial').innerText = `${c.infoDoseParcial.valorFormatted} ${c.infoDoseParcial.unidade}`;
+        document.getElementById('resAguaParcial').innerText = `${c.aguaParcial.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L`;
+      } else {
+        cardParcial.classList.add('hidden');
+      }
+
+      if (c.cargasCheias === 0) {
+        document.getElementById('resResumoCargas').innerText = `1 carga parcial (${c.caldaParcial.toLocaleString('pt-BR')} L)`;
+      } else if (c.caldaParcial > 0) {
+        document.getElementById('resResumoCargas').innerText = `${c.cargasCheias} cheia(s) + 1 parcial`;
+      } else {
+        document.getElementById('resResumoCargas').innerText = `${c.cargasCheias} cheia(s)`;
+      }
+    }
+
+    function compartilharWhatsApp() {
+      if (!produtoSelecionado) return;
+
+      const c = obterCalculosGerais();
+      const ehViaSolo = isAplicacaoViaSolo(produtoSelecionado.tipoAplicacao);
+
+      let msg = `*PRESCRICAO TECNICA - SYNGENTA BIOLOGICALS* 🌱\n\n`;
+      msg += `🌾 *Cultura:* ${produtoSelecionado.cultura}\n`;
+      msg += `🎯 *Alvo:* ${produtoSelecionado.alvo}\n`;
+      msg += `🧪 *Produto:* ${produtoSelecionado.produto}\n`;
+      msg += `🚜 *Modalidade:* ${produtoSelecionado.tipoAplicacao}\n`;
+      msg += `📐 *Área Total:* ${c.area.toLocaleString('pt-BR')} ha\n\n`;
+      
+      msg += `*DOSAGEM E PARAMETROS BASE:* \n`;
+      msg += `• Dose/ha: ${produtoSelecionado.doseHa} ${produtoSelecionado.unidadeDose}\n`;
+      msg += `• Vol. Calda/ha: ${c.volCaldaHaEfetivo.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L/ha\n`;
+
+      if (ehViaSolo) {
+        msg += `\n🪴 *PARAMETROS DE APLICAÇÃO VIA SOLO / ESGUICHO:* \n`;
+        msg += `• Esguicho: ${c.esguichoMl} mL/planta\n`;
+        msg += `• Espaçamento: ${c.espacamentoL} m (linhas) x ${c.espacamentoP} m (plantas)\n`;
+        msg += `• Quantidade de Plantas/ha: ${c.plantasPorHa.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} plantas\n`;
+        msg += `• Quantidade de Plantas na Área: ${c.plantasAreaTotal.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} plantas\n`;
+        msg += `• Dose por Planta: ${c.infoDosePlanta.valorFormatted} ${c.infoDosePlanta.unidade}\n`;
+        msg += `• Dose por Tanque / Bomba: ${c.infoDoseCheia.valorFormatted} ${c.infoDoseCheia.unidade}\n`;
+      }
+
+      msg += `\n🚜 *PREPARO DA CALDA (TANQUE / BOMBA: ${c.capTanque.toLocaleString('pt-BR')} L):* \n`;
+      
+      if (c.cargasCheias > 0) {
+        msg += `• *Tanque/Bomba Cheia (${c.cargasCheias}x):* ${c.infoDoseCheia.valorFormatted} ${c.infoDoseCheia.unidade} de produto + ${c.aguaTanqueCheio.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L de água\n`;
+      }
+
+      if (c.caldaParcial > 0) {
+        const rotuloParcial = c.cargasCheias === 0 ? "Carga Única Parcial" : "Última Carga Parcial";
+        msg += `• *${rotuloParcial} (${c.caldaParcial.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L de calda):* ${c.infoDoseParcial.valorFormatted} ${c.infoDoseParcial.unidade} de produto + ${c.aguaParcial.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L de água\n`;
+      }
+
+      msg += `\n📊 *NECESSIDADE TOTAL PARA A ÁREA:* \n`;
+      msg += `• *Produto Total:* ${c.totalProduto.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${c.unProdBase}\n`;
+      msg += `• *Calda Total:* ${c.totalCalda.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${c.unCaldaBase}\n\n`;
+
+      if (produtoSelecionado.observacoes) {
+        msg += `📋 *Obs. Técnicas:* ${produtoSelecionado.observacoes}\n\n`;
+      }
+
+      msg += `_CT BIO Syngenta - Thais dos Santos Gomes - Nater Coop_`;
+
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function gerarPDF() {
+      window.print();
+    }
+
+    function registrarServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('PWA Service Worker ativo!', reg.scope))
+          .catch(err => console.error('Erro ao registrar Service Worker:', err));
+      }
+    }
+  </script>
 </body>
 </html>

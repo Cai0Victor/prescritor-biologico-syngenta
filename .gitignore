@@ -1,6 +1,5 @@
-.clasp.json
 node_modules/
-.DS_Store
-.vscode/
-*.log
+.clasp.json
 .env
+.DS_Store
+*.log

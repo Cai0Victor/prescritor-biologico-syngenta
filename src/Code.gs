@@ -1,15 +1,25 @@
 /**
- * PRESCRITOR BIOLÓGICO SYNGENTA - BACKEND
- * Tratamento rigoroso de tipos e leitura da aba 'Base_Produtos'
+ * ============================================================================
+ * PRESCRITOR BIOLÓGICO SYNGENTA - BACKEND (GOOGLE APPS SCRIPT)
+ * ============================================================================
+ * Arquivo: src/Code.gs
+ * Função: Servidor API JSON e leitor da planilha "Prescritor Biologico - Base"
+ * ============================================================================
  */
 
 function doGet(e) {
-  const template = HtmlService.createTemplateFromFile('Index');
-  template.autorizacaoPrevia = validarChaveUrl(e);
-  
-  return template.evaluate()
+  // Retorno da API JSON para sincronização offline (GitHub Pages / PWA)
+  if (e && e.parameter && e.parameter.action === 'getDados') {
+    const dados = getDadosProdutos();
+    return ContentService.createTextOutput(JSON.stringify(dados))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Renderização padrão Apps Script
+  return HtmlService.createTemplateFromFile('Index')
+    .evaluate()
     .setTitle('Prescritor Biológico | Syngenta')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -17,99 +27,62 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-function validarChaveUrl(e) {
-  if (!e || !e.parameter) return false;
-  const chave = e.parameter.chave;
-  const pinCorreto = ScriptProperties.getProperty('APP_PIN') || '7410';
-  return chave === pinCorreto;
-}
+function getDadosProdutos() {
+  try {
+    const NOME_PLANILHA = "Prescritor Biologico - Base";
+    const NOME_ABA = "Base_Produtos";
 
-function validarSenha(pin) {
-  const pinCorreto = ScriptProperties.getProperty('APP_PIN') || '7410';
-  return String(pin).trim() === pinCorreto;
-}
+    let spreadsheet;
 
-/**
- * Converte entradas da planilha para números válidos (trata vírgulas e pontos decimais)
- */
-function parseSheetNumber(val) {
-  if (val === null || val === undefined || val === '') return 0;
-  if (typeof val === 'number') return isNaN(val) ? 0 : val;
-  
-  let str = String(val).trim().replace(/\s/g, '');
-  if (str.includes(',') && !str.includes('.')) {
-    str = str.replace(',', '.');
-  } else if (str.includes(',') && str.includes('.')) {
-    str = str.replace(/\./g, '').replace(',', '.');
-  }
-  
-  const parsed = parseFloat(str);
-  return isNaN(parsed) ? 0 : parsed;
-}
-
-function getDadosPrescricao(chaveInput) {
-  const pinCorreto = ScriptProperties.getProperty('APP_PIN') || '7410';
-  
-  if (String(chaveInput).trim() !== pinCorreto) {
-    throw new Error("PIN_INCORRETO");
-  }
-
-  const sheetId = ScriptProperties.getProperty('SPREADSHEET_ID');
-  let ss;
-
-  if (sheetId && !sheetId.includes('<') && !sheetId.includes('ID_DA_SUA_PLANILHA')) {
     try {
-      ss = SpreadsheetApp.openById(sheetId);
-    } catch (err) {
-      throw new Error(`Falha ao conectar no ID configurado: ${sheetId}.`);
+      const active = SpreadsheetApp.getActiveSpreadsheet();
+      if (active && active.getName() === NOME_PLANILHA) {
+        spreadsheet = active;
+      }
+    } catch (err) {}
+
+    if (!spreadsheet) {
+      const arquivos = DriveApp.getFilesByName(NOME_PLANILHA);
+      if (!arquivos.hasNext()) {
+        throw new Error(`A planilha "${NOME_PLANILHA}" não foi encontrada no seu Google Drive.`);
+      }
+      spreadsheet = SpreadsheetApp.open(arquivos.next());
     }
-  } else {
-    try {
-      ss = SpreadsheetApp.getActiveSpreadsheet();
-    } catch (err) {
-      throw new Error("A propriedade 'SPREADSHEET_ID' não foi configurada nas Script Properties.");
+
+    const sheet = spreadsheet.getSheetByName(NOME_ABA);
+    if (!sheet) {
+      throw new Error(`A aba "${NOME_ABA}" não foi encontrada dentro da planilha.`);
     }
+
+    const range = sheet.getDataRange();
+    const data = range.getValues();
+
+    if (data.length <= 1) return [];
+
+    data.shift(); // Remove cabeçalho
+
+    return data
+      .filter(row => row[0] !== "" && row[1] !== "" && row[3] !== "")
+      .map((row, index) => {
+        const rawDose = String(row[5]).replace(',', '.');
+        const rawVolCalda = String(row[7]).replace(',', '.');
+
+        return {
+          id: String(row[0] || index + 1).trim(),
+          cultura: String(row[1] || '').trim(),
+          alvo: String(row[2] || '').trim(),
+          produto: String(row[3] || '').trim(),
+          tipoAplicacao: String(row[4] || '').trim(),
+          doseHa: parseFloat(rawDose) || 0,
+          unidadeDose: String(row[6] || '').trim(),
+          volCalda: parseFloat(rawVolCalda) || 0,
+          unidadeCalda: String(row[8] || '').trim(),
+          observacoes: String(row[9] || '').trim()
+        };
+      });
+
+  } catch (error) {
+    Logger.log("❌ Erro em getDadosProdutos(): " + error.toString());
+    throw new Error(error.message);
   }
-
-  const sheet = ss.getSheetByName('Base_Produtos') || ss.getSheets()[0];
-  if (!sheet) throw new Error("Aba de produtos não localizada na planilha.");
-
-  const dados = sheet.getDataRange().getValues();
-  if (dados.length <= 1) return [];
-
-  const cabecalhos = dados[0].map(c => String(c).trim().toLowerCase());
-  
-  const idxId = cabecalhos.findIndex(c => c === 'id');
-  const idxCultura = cabecalhos.findIndex(c => c.includes('cultura'));
-  const idxAlvo = cabecalhos.findIndex(c => c.includes('alvo') || c.includes('praga') || c.includes('doenca'));
-  const idxProduto = cabecalhos.findIndex(c => c.includes('produto'));
-  const idxTipo = cabecalhos.findIndex(c => c.includes('tipo') || c.includes('aplicacao'));
-  const idxDoseHa = cabecalhos.findIndex(c => c.includes('dose'));
-
-  let idxUnidDose = cabecalhos.findIndex((c, i) => c.includes('unidade') && i > idxDoseHa);
-  if (idxUnidDose === -1) idxUnidDose = 6;
-
-  const idxVolCalda = cabecalhos.findIndex(c => c.includes('vol') || c.includes('calda'));
-
-  let idxUnidCalda = cabecalhos.findIndex((c, i) => c.includes('unidade') && i > idxVolCalda);
-  if (idxUnidCalda === -1) idxUnidCalda = 8;
-
-  const idxObs = cabecalhos.findIndex(c => c.includes('obs') || c.includes('tecnica') || c.includes('observacao'));
-
-  const linhas = dados.slice(1);
-
-  return linhas.map((linha, index) => {
-    return {
-      id: idxId !== -1 && linha[idxId] !== "" ? linha[idxId] : index + 1,
-      cultura: idxCultura !== -1 ? String(linha[idxCultura]).trim() : '',
-      alvo: idxAlvo !== -1 ? String(linha[idxAlvo]).trim() : '',
-      produto: idxProduto !== -1 ? String(linha[idxProduto]).trim() : '',
-      tipoAplicacao: idxTipo !== -1 && linha[idxTipo] ? String(linha[idxTipo]).trim() : 'Pulverização',
-      doseHa: idxDoseHa !== -1 ? parseSheetNumber(linha[idxDoseHa]) : 0,
-      unidadeDose: idxUnidDose < linha.length && linha[idxUnidDose] ? String(linha[idxUnidDose]).trim() : 'L/ha',
-      volCaldaHa: idxVolCalda !== -1 ? parseSheetNumber(linha[idxVolCalda]) : 0,
-      unidadeCalda: idxUnidCalda < linha.length && linha[idxUnidCalda] ? String(linha[idxUnidCalda]).trim() : 'L/ha',
-      observacoes: idxObs !== -1 && linha[idxObs] ? String(linha[idxObs]).trim() : ''
-    };
-  }).filter(item => item.cultura !== '' && item.produto !== '');
 }

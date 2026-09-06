@@ -1,37 +1,17 @@
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root {
-    --syngenta-green: #008752;
-    --syngenta-dark: #005A36;
+    --syngenta-green: #00843D;
+    --syngenta-dark: #00632E;
   }
-
-  .bg-syngenta {
-    background-color: var(--syngenta-green);
-  }
-
-  .text-syngenta {
-    color: var(--syngenta-green);
-  }
-
-  .loader {
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top: 3px solid #ffffff;
-    width: 20px;
-    height: 20px;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  .fade-in {
-    animation: fadeIn 0.25s ease-in-out forwards;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+  .bg-syngenta { background-color: var(--syngenta-green); }
+  .bg-syngenta:hover { background-color: var(--syngenta-dark); }
+  .border-syngenta { border-color: var(--syngenta-green); }
+  .text-syngenta { color: var(--syngenta-green); }
+  
+  @media print {
+    .no-print { display: none !important; }
+    body { background-color: #ffffff !important; padding: 0 !important; }
+    .print-card { border: none !important; shadow: none !important; }
   }
 </style>
